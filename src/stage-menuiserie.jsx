@@ -5,12 +5,12 @@ import { Building2, Plus, Search, Filter, Star, MapPin, Tag, Edit2, Trash2, Mess
 // FIREBASE CONFIGURATION (À REMPLACER AVEC VOS VRAIES VALEURS)
 // =============================================================================
 const firebaseConfig = {
-  apiKey: "VOTRE_API_KEY",
-  authDomain: "VOTRE_PROJECT_ID.firebaseapp.com",
-  projectId: "VOTRE_PROJECT_ID",
-  storageBucket: "VOTRE_PROJECT_ID.appspot.com",
-  messagingSenderId: "VOTRE_MESSAGING_SENDER_ID",
-  appId: "VOTRE_APP_ID"
+  apiKey: "AIzaSyBJYxaiQXTXh3XQlpkIfbvvKuiLBMCig98",
+  authDomain: "stages-menuiserie.firebaseapp.com",
+  projectId: "stages-menuiserie",
+  storageBucket: "stages-menuiserie.firebasestorage.app",
+  messagingSenderId: "237238635351",
+  appId: "1:237238635351:web:094518b05443956eb70c12"
 };
 
 // =============================================================================
@@ -35,112 +35,10 @@ const STATUS_OPTIONS = [
 ];
 
 // =============================================================================
-// FIREBASE MOCK (Simulation - sera remplacé par le vrai Firebase)
+// FIREBASE SERVICE
 // =============================================================================
-class FirebaseMock {
-  constructor() {
-    this.currentUser = null;
-    this.users = [];
-    this.companies = [];
-    this.listeners = [];
-  }
-
-  // Auth
-  async signIn(email, password) {
-    const user = this.users.find(u => u.email === email && u.password === password);
-    if (!user) throw new Error("Email ou mot de passe incorrect");
-    this.currentUser = { uid: user.id, email: user.email };
-    return this.currentUser;
-  }
-
-  async signOut() {
-    this.currentUser = null;
-  }
-
-  getCurrentUser() {
-    return this.currentUser;
-  }
-
-  async getUserData(uid) {
-    return this.users.find(u => u.id === uid);
-  }
-
-  // Firestore
-  async getCompanies() {
-    return [...this.companies];
-  }
-
-  async addCompany(data) {
-    const newCompany = {
-      id: Date.now().toString(),
-      ...data,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      history: []
-    };
-    this.companies.push(newCompany);
-    this.notifyListeners();
-    return newCompany;
-  }
-
-  async updateCompany(id, data) {
-    const index = this.companies.findIndex(c => c.id === id);
-    if (index !== -1) {
-      this.companies[index] = { ...this.companies[index], ...data, updatedAt: new Date() };
-      this.notifyListeners();
-    }
-  }
-
-  async deleteCompany(id) {
-    this.companies = this.companies.filter(c => c.id !== id);
-    this.notifyListeners();
-  }
-
-  async addComment(companyId, comment) {
-    const company = this.companies.find(c => c.id === companyId);
-    if (company) {
-      company.history.push({
-        id: Date.now().toString(),
-        ...comment,
-        date: new Date()
-      });
-      this.notifyListeners();
-    }
-  }
-
-  async getUsers() {
-    return [...this.users];
-  }
-
-  async addUser(userData) {
-    const newUser = {
-      id: Date.now().toString(),
-      ...userData,
-      createdAt: new Date()
-    };
-    this.users.push(newUser);
-    return newUser;
-  }
-
-  async deleteUser(uid) {
-    this.users = this.users.filter(u => u.id !== uid);
-  }
-
-  onSnapshot(callback) {
-    this.listeners.push(callback);
-    callback(this.companies);
-    return () => {
-      this.listeners = this.listeners.filter(l => l !== callback);
-    };
-  }
-
-  notifyListeners() {
-    this.listeners.forEach(listener => listener(this.companies));
-  }
-}
-
-// Initialisation avec données de test
-const firebase = new FirebaseMock();
+import firebaseService from './firebaseService';
+const firebase = firebaseService;
 firebase.users = [
   { id: '1', email: 'admin@lycee.fr', password: 'admin123', name: 'Administrateur', role: 'admin' },
   { id: '2', email: 'prof@lycee.fr', password: 'prof123', name: 'M. Martin', role: 'teacher' },
