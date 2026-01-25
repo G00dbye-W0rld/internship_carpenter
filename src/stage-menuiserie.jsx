@@ -1,17 +1,162 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Plus, Search, Filter, Star, MapPin, Tag, Edit2, Trash2, MessageSquare, Users, LogOut, Eye, EyeOff, X, Calendar, User, Mail, Phone, AlertCircle, Check } from 'lucide-react';
+import { 
+  signInWithEmailAndPassword, 
+  signOut as firebaseSignOut,
+  createUserWithEmailAndPassword 
+} from 'firebase/auth';
+import { 
+  collection, 
+  doc, 
+  getDocs, 
+  getDoc,
+  addDoc, 
+  updateDoc, 
+  deleteDoc,
+  query,
+  onSnapshot,
+  orderBy,
+  serverTimestamp,
+  setDoc
+} from 'firebase/firestore';
+import { auth, db } from './firebase';
 
 // =============================================================================
-// FIREBASE CONFIGURATION (À REMPLACER AVEC VOS VRAIES VALEURS)
+// FIREBASE SERVICE
 // =============================================================================
-const firebaseConfig = {
-  apiKey: "AIzaSyBJYxaiQXTXh3XQlpkIfbvvKuiLBMCig98",
-  authDomain: "stages-menuiserie.firebaseapp.com",
-  projectId: "stages-menuiserie",
-  storageBucket: "stages-menuiserie.firebasestorage.app",
-  messagingSenderId: "237238635351",
-  appId: "1:237238635351:web:094518b05443956eb70c12"
+const firebaseService = {
+  async signIn(email, password) {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      return userCredential.user;
+    } catch (error) {
+      throw new Error('Email ou mot de passe incorrect');
+    }
+  },
+  
+  async signOut() {
+    await firebaseSignOut(auth);
+  },
+  
+  getCurrentUser() {
+    return auth.currentUser;
+  },
+  
+  async getUserData(uid) {
+    const docRef = doc(db, 'users', uid);
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
+  },
+  
+  async getCompanies() {
+    try {
+      const q = query(collection(db, 'companies'), orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      const companies = [];
+      
+      for (const docSnapshot of querySnapshot.docs) {
+        const company = {
+          id: docSnapshot.id,
+          ...docSnapshot.data(),
+          createdAt: docSnapshot.data().createdAt?.toDate(),
+          updatedAt: docSnapshot.data().updatedAt?.toDate(),
+          history: []
+        };
+        
+        try {
+          const historySnapshot = await getDocs(
+            query(collection(db, `companies/${docSnapshot.id}/history`), orderBy('date', 'desc'))
+          );
+          company.history = historySnapshot.docs.map(h => ({
+            id: h.id,
+            ...h.data(),
+            date: h.data().date?.toDate()
+          }));
+        } catch (e) {
+          console.log('No history for company', company.id);
+        }
+        
+        companies.push(company);
+      }
+      
+      return companies;
+    } catch (error) {
+      console.error('Error:', error);
+      return [];
+    }
+  },
+  
+  async addCompany(data) {
+    const docRef = await addDoc(collection(db, 'companies'), {
+      ...data,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return { id: docRef.id, ...data };
+  },
+  
+  async updateCompany(id, data) {
+    await updateDoc(doc(db, 'companies', id), {
+      ...data,
+      updatedAt: serverTimestamp()
+    });
+  },
+  
+  async deleteCompany(id) {
+    const historySnapshot = await getDocs(collection(db, `companies/${id}/history`));
+    for (const historyDoc of historySnapshot.docs) {
+      await deleteDoc(doc(db, `companies/${id}/history`, historyDoc.id));
+    }
+    await deleteDoc(doc(db, 'companies', id));
+  },
+  
+  async addComment(companyId, comment) {
+    await addDoc(collection(db, `companies/${companyId}/history`), {
+      ...comment,
+      date: serverTimestamp()
+    });
+  },
+  
+  async getUsers() {
+    const querySnapshot = await getDocs(collection(db, 'users'));
+    return querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+  
+  async addUser(userData) {
+    const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
+    await setDoc(doc(db, 'users', userCredential.user.uid), {
+      email: userData.email,
+      name: userData.name,
+      role: userData.role,
+      createdAt: serverTimestamp()
+    });
+    return { id: userCredential.user.uid, ...userData };
+  },
+  
+  async deleteUser(uid) {
+    await deleteDoc(doc(db, 'users', uid));
+  },
+  
+  onSnapshot(callback) {
+    const q = query(collection(db, 'companies'), orderBy('createdAt', 'desc'));
+    return onSnapshot(q, async (snap) => {
+      const companies = [];
+      for (const docSnap of snap.docs) {
+        const company = {
+          id: docSnap.id,
+          ...docSnap.data(),
+          createdAt: docSnap.data().createdAt?.toDate(),
+          updatedAt: docSnap.data().updatedAt?.toDate(),
+          history: []
+        };
+        companies.push(company);
+      }
+      callback(companies);
+    });
+  }
 };
+
+const firebase = firebaseService;
 
 // =============================================================================
 // DONNÉES PRÉDÉFINIES
@@ -32,60 +177,6 @@ const STATUS_OPTIONS = [
   { value: 'active', label: '✅ Accepte des stagiaires', color: '#10b981' },
   { value: 'inactive', label: '⚠️ N\'accepte plus', color: '#f59e0b' },
   { value: 'not-recommended', label: '❌ Déconseillée', color: '#ef4444' }
-];
-
-// =============================================================================
-// FIREBASE SERVICE
-// =============================================================================
-import firebaseService from './firebaseService';
-const firebase = firebaseService;
-firebase.users = [
-  { id: '1', email: 'admin@lycee.fr', password: 'admin123', name: 'Administrateur', role: 'admin' },
-  { id: '2', email: 'prof@lycee.fr', password: 'prof123', name: 'M. Martin', role: 'teacher' },
-  { id: '3', email: 'eleve@lycee.fr', password: 'eleve123', name: 'Jean Dupont', role: 'student' }
-];
-
-firebase.companies = [
-  {
-    id: '1',
-    name: 'Menuiserie Dupont',
-    address: '12 rue des Artisans',
-    postalCode: '75001',
-    city: 'Paris',
-    phone: '01 23 45 67 89',
-    email: 'contact@dupont.fr',
-    contactName: 'M. Dupont',
-    tags: ['Menuiserie', 'Agencement'],
-    status: 'active',
-    rating: 4,
-    createdAt: new Date('2024-01-15'),
-    updatedAt: new Date('2024-01-15'),
-    history: [
-      {
-        id: 'h1',
-        comment: 'Très bon accueil, le stagiaire a beaucoup appris',
-        rating: 4,
-        authorName: 'M. Martin',
-        date: new Date('2024-01-20')
-      }
-    ]
-  },
-  {
-    id: '2',
-    name: 'Charpente Moderne',
-    address: '45 avenue du Bois',
-    postalCode: '69001',
-    city: 'Lyon',
-    phone: '04 12 34 56 78',
-    email: 'info@charpente-moderne.fr',
-    contactName: 'Mme Rousseau',
-    tags: ['Charpente', 'Escaliers'],
-    status: 'active',
-    rating: 5,
-    createdAt: new Date('2024-02-10'),
-    updatedAt: new Date('2024-02-10'),
-    history: []
-  }
 ];
 
 // =============================================================================
@@ -235,8 +326,13 @@ const LoginPage = ({ onLogin }) => {
     setLoading(true);
 
     try {
-      await firebase.signIn(email, password);
-      const userData = await firebase.getUserData(firebase.currentUser.uid);
+      const user = await firebase.signIn(email, password);
+      const userData = await firebase.getUserData(user.uid);
+      
+      if (!userData) {
+        throw new Error('Utilisateur non trouvé dans la base de données');
+      }
+      
       onLogin(userData);
     } catch (err) {
       setError(err.message);
@@ -299,13 +395,6 @@ const LoginPage = ({ onLogin }) => {
             {loading ? 'Connexion...' : 'Se connecter'}
           </Button>
         </form>
-
-        <div className="mt-6 p-4 bg-slate-50 rounded-lg text-sm text-slate-600">
-          <p className="font-semibold mb-2">Comptes de test :</p>
-          <p>👨‍💼 Admin : admin@lycee.fr / admin123</p>
-          <p>👨‍🏫 Prof : prof@lycee.fr / prof123</p>
-          <p>👨‍🎓 Élève : eleve@lycee.fr / eleve123</p>
-        </div>
       </div>
     </div>
   );
