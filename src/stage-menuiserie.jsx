@@ -174,21 +174,20 @@ const PREDEFINED_TAGS = [
 ];
 
 const STATUS_OPTIONS = [
-  { value: 'active', label: '✅ Accepte des stagiaires', color: '#10b981' },
-  { value: 'inactive', label: '⚠️ N\'accepte plus', color: '#f59e0b' },
-  { value: 'not-recommended', label: '❌ Déconseillée', color: '#ef4444' }
+  { value: 'active', label: 'Accepte des stagiaires', color: 'success' },
+  { value: 'inactive', label: 'N\'accepte plus', color: 'warning' },
+  { value: 'not-recommended', label: 'Déconseillée', color: 'danger' }
 ];
 
 // =============================================================================
-// COMPOSANTS UI RÉUTILISABLES
+// COMPOSANTS UI PROFESSIONNELS
 // =============================================================================
 
-const Button = ({ children, variant = 'primary', icon: Icon, onClick, disabled, type = 'button', className = '' }) => {
-  const variants = {
-    primary: 'bg-amber-600 hover:bg-amber-700 text-white',
-    secondary: 'bg-slate-200 hover:bg-slate-300 text-slate-900',
-    danger: 'bg-red-600 hover:bg-red-700 text-white',
-    ghost: 'bg-transparent hover:bg-slate-100 text-slate-700'
+const Button = ({ children, variant = 'primary', icon: Icon, onClick, disabled, type = 'button', className = '', size = 'default' }) => {
+  const sizeClasses = {
+    sm: 'px-3 py-1.5 text-xs',
+    default: 'px-4 py-2 text-sm',
+    lg: 'px-6 py-3 text-base'
   };
 
   return (
@@ -196,68 +195,72 @@ const Button = ({ children, variant = 'primary', icon: Icon, onClick, disabled, 
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 ${variants[variant]} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+      className={`btn btn-${variant} ${sizeClasses[size]} ${className}`}
     >
-      {Icon && <Icon size={20} />}
+      {Icon && <Icon size={size === 'sm' ? 16 : size === 'lg' ? 20 : 18} />}
       {children}
     </button>
   );
 };
 
-const Input = ({ label, icon: Icon, error, ...props }) => (
-  <div className="mb-4">
-    {label && <label className="block text-sm font-medium text-slate-700 mb-2">{label}</label>}
+const Input = ({ label, icon: Icon, error, className = '', ...props }) => (
+  <div className="form-group">
+    {label && <label className="form-label">{label}</label>}
     <div className="relative">
-      {Icon && <Icon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />}
+      {Icon && (
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-400">
+          <Icon size={18} />
+        </div>
+      )}
       <input
-        className={`w-full px-4 py-3 ${Icon ? 'pl-11' : ''} border-2 rounded-lg focus:outline-none focus:border-amber-500 transition-colors ${error ? 'border-red-500' : 'border-slate-200'}`}
+        className={`${Icon ? 'pl-10' : ''} ${error ? 'border-danger-500 focus:ring-danger-500' : ''} ${className}`}
         {...props}
       />
     </div>
-    {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
+    {error && <p className="mt-1 text-xs text-danger-600">{error}</p>}
   </div>
 );
 
 const Select = ({ label, options, error, ...props }) => (
-  <div className="mb-4">
-    {label && <label className="block text-sm font-medium text-slate-700 mb-2">{label}</label>}
-    <select
-      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:border-amber-500 transition-colors ${error ? 'border-red-500' : 'border-slate-200'}`}
-      {...props}
-    >
+  <div className="form-group">
+    {label && <label className="form-label">{label}</label>}
+    <select className={error ? 'border-danger-500 focus:ring-danger-500' : ''} {...props}>
       {options.map(opt => (
         <option key={opt.value} value={opt.value}>{opt.label}</option>
       ))}
     </select>
-    {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
+    {error && <p className="mt-1 text-xs text-danger-600">{error}</p>}
   </div>
 );
 
 const Textarea = ({ label, error, ...props }) => (
-  <div className="mb-4">
-    {label && <label className="block text-sm font-medium text-slate-700 mb-2">{label}</label>}
-    <textarea
-      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:border-amber-500 transition-colors ${error ? 'border-red-500' : 'border-slate-200'}`}
-      rows={4}
-      {...props}
-    />
-    {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
+  <div className="form-group">
+    {label && <label className="form-label">{label}</label>}
+    <textarea className={error ? 'border-danger-500 focus:ring-danger-500' : ''} rows={4} {...props} />
+    {error && <p className="mt-1 text-xs text-danger-600">{error}</p>}
   </div>
 );
 
-const Modal = ({ isOpen, onClose, title, children }) => {
+const Modal = ({ isOpen, onClose, title, children, size = 'default' }) => {
   if (!isOpen) return null;
 
+  const sizeClasses = {
+    sm: 'max-w-md',
+    default: 'max-w-2xl',
+    lg: 'max-w-4xl',
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-slideUp">
-        <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-slate-900">{title}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
-            <X size={24} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+      <div className="absolute inset-0 bg-primary-900/20 backdrop-blur-sm" onClick={onClose} />
+      <div className={`relative bg-white rounded-xl shadow-xl ${sizeClasses[size]} w-full max-h-[90vh] overflow-hidden animate-scaleIn`}>
+        <div className="sticky top-0 backdrop-professional border-b border-primary-200 px-6 py-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-primary-900">{title}</h2>
+          <button onClick={onClose} className="btn-ghost p-2 rounded-lg">
+            <X size={20} />
           </button>
         </div>
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-5rem)]">
           {children}
         </div>
       </div>
@@ -267,7 +270,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
 
 const StarRating = ({ rating, onRate, readonly = false }) => {
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map(star => (
         <button
           key={star}
@@ -277,8 +280,8 @@ const StarRating = ({ rating, onRate, readonly = false }) => {
           className={`${readonly ? 'cursor-default' : 'cursor-pointer hover:scale-110'} transition-transform`}
         >
           <Star
-            size={24}
-            className={star <= rating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}
+            size={20}
+            className={star <= rating ? 'fill-warning-500 text-warning-500' : 'text-primary-300'}
           />
         </button>
       ))}
@@ -296,19 +299,30 @@ const TagSelector = ({ selectedTags, onToggle, readonly = false }) => (
           type="button"
           onClick={() => !readonly && onToggle(tag)}
           disabled={readonly}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
             isSelected
-              ? 'bg-amber-600 text-white'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              ? 'bg-accent-600 text-white shadow-sm'
+              : 'bg-primary-100 text-primary-700 hover:bg-primary-200'
           } ${readonly ? 'cursor-default' : 'cursor-pointer'}`}
         >
-          <Tag size={14} className="inline mr-1" />
+          <Tag size={14} />
           {tag}
         </button>
       );
     })}
   </div>
 );
+
+const StatusBadge = ({ status }) => {
+  const statusConfig = STATUS_OPTIONS.find(s => s.value === status);
+  const Icon = status === 'active' ? Check : status === 'inactive' ? AlertCircle : X;
+  return (
+    <span className={`badge badge-${statusConfig.color} inline-flex items-center gap-1`}>
+      <Icon size={12} />
+      {statusConfig.label}
+    </span>
+  );
+};
 
 // =============================================================================
 // PAGE DE CONNEXION
@@ -342,66 +356,70 @@ const LoginPage = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-slate-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 animate-slideUp">
-        <div className="text-center mb-8">
-          <div className="bg-amber-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Building2 size={40} className="text-amber-600" />
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8 animate-slideUp">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-900 rounded-xl mb-4 shadow-lg">
+            <Building2 size={32} className="text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Stages Menuiserie</h1>
-          <p className="text-slate-600">Base de données des entreprises</p>
+          <h1 className="text-3xl font-bold text-primary-900 mb-2">Stages Menuiserie</h1>
+          <p className="text-primary-600">Gestion des entreprises partenaires</p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <Input
-            label="Email"
-            type="email"
-            icon={Mail}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="votre.email@lycee.fr"
-            required
-          />
+        <div className="card p-8 animate-slideUp" style={{ animationDelay: '0.1s' }}>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <Input
+              label="Adresse email"
+              type="email"
+              icon={Mail}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="votre.email@lycee.fr"
+              required
+              autoComplete="email"
+            />
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-slate-700 mb-2">Mot de passe</label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 pr-11 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-amber-500 transition-colors"
-                placeholder="••••••••"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
+            <div className="form-group">
+              <label className="form-label">Mot de passe</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pr-10"
+                  placeholder="••••••••"
+                  required
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-primary-400 hover:text-primary-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
-          </div>
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
-              <AlertCircle size={20} />
-              <span className="text-sm">{error}</span>
-            </div>
-          )}
+            {error && (
+              <div className="flex items-start gap-3 p-3 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 text-sm animate-slideDown">
+                <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
 
-          <Button type="submit" className="w-full justify-center" disabled={loading}>
-            {loading ? 'Connexion...' : 'Se connecter'}
-          </Button>
-        </form>
+            <Button type="submit" className="w-full justify-center" disabled={loading} size="lg">
+              {loading ? 'Connexion en cours...' : 'Se connecter'}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );
 };
 
 // =============================================================================
-// GESTION DES UTILISATEURS (Admin uniquement)
+// GESTION DES UTILISATEURS
 // =============================================================================
 const UserManagement = ({ currentUser, onClose }) => {
   const [users, setUsers] = useState([]);
@@ -446,8 +464,8 @@ const UserManagement = ({ currentUser, onClose }) => {
       </div>
 
       {showAddUser && (
-        <form onSubmit={handleAddUser} className="mb-6 p-4 bg-slate-50 rounded-lg">
-          <h3 className="font-bold text-lg mb-4">Nouvel Utilisateur</h3>
+        <form onSubmit={handleAddUser} className="mb-6 p-4 bg-primary-50 rounded-lg">
+          <h3 className="font-bold text-lg mb-4 text-primary-900">Nouvel Utilisateur</h3>
           <Input
             label="Nom complet"
             value={newUser.name}
@@ -483,20 +501,20 @@ const UserManagement = ({ currentUser, onClose }) => {
 
       <div className="space-y-3">
         {users.map(user => (
-          <div key={user.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+          <div key={user.id} className="flex items-center justify-between p-4 bg-primary-50 rounded-lg border border-primary-200">
             <div className="flex-1">
-              <p className="font-semibold text-slate-900">{user.name}</p>
-              <p className="text-sm text-slate-600">{user.email}</p>
+              <p className="font-semibold text-primary-900">{user.name}</p>
+              <p className="text-sm text-primary-600">{user.email}</p>
               <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-medium ${
-                user.role === 'admin' ? 'bg-purple-100 text-purple-700' :
-                user.role === 'teacher' ? 'bg-blue-100 text-blue-700' :
-                'bg-green-100 text-green-700'
+                user.role === 'admin' ? 'bg-primary-900 text-white' :
+                user.role === 'teacher' ? 'bg-accent-100 text-accent-700' :
+                'bg-success-100 text-success-700'
               }`}>
                 {user.role === 'admin' ? '👨‍💼 Admin' : user.role === 'teacher' ? '👨‍🏫 Professeur' : '👨‍🎓 Élève'}
               </span>
             </div>
             {user.id !== currentUser.id && (
-              <Button variant="danger" icon={Trash2} onClick={() => handleDeleteUser(user.id)}>
+              <Button variant="danger" icon={Trash2} size="sm" onClick={() => handleDeleteUser(user.id)}>
                 Supprimer
               </Button>
             )}
@@ -595,7 +613,7 @@ const CompanyForm = ({ company, onSave, onCancel, currentUser }) => {
       </div>
 
       <div className="mb-4">
-        <label className="block text-sm font-medium text-slate-700 mb-2">Activités / Spécialités *</label>
+        <label className="form-label">Activités / Spécialités *</label>
         <TagSelector selectedTags={formData.tags} onToggle={toggleTag} />
       </div>
 
@@ -607,13 +625,13 @@ const CompanyForm = ({ company, onSave, onCancel, currentUser }) => {
       />
 
       <div className="mb-4">
-        <label className="block text-sm font-medium text-slate-700 mb-2">Évaluation</label>
+        <label className="form-label">Évaluation</label>
         <StarRating rating={formData.rating} onRate={(rating) => setFormData({ ...formData, rating })} />
       </div>
 
       <div className="flex gap-3 pt-4">
         <Button type="submit" icon={Check}>
-          {company ? 'Enregistrer les modifications' : 'Ajouter l\'entreprise'}
+          {company ? 'Enregistrer' : 'Ajouter'}
         </Button>
         <Button type="button" variant="secondary" onClick={onCancel}>
           Annuler
@@ -633,8 +651,6 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
 
   const canEdit = currentUser.role === 'teacher' || currentUser.role === 'admin';
 
-  const statusInfo = STATUS_OPTIONS.find(s => s.value === company.status);
-
   const handleAddComment = async (e) => {
     e.preventDefault();
     await firebase.addComment(company.id, {
@@ -651,74 +667,64 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
   return (
     <Modal isOpen={true} onClose={onClose} title={company.name}>
       <div className="space-y-6">
-        {/* En-tête avec statut et évaluation */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-200">
-          <div>
-            <span
-              className="inline-block px-4 py-2 rounded-full text-sm font-medium"
-              style={{ backgroundColor: `${statusInfo.color}20`, color: statusInfo.color }}
-            >
-              {statusInfo.label}
-            </span>
-          </div>
+        <div className="flex items-center justify-between pb-4 divider">
+          <StatusBadge status={company.status} />
           <StarRating rating={company.rating} readonly />
         </div>
 
-        {/* Informations */}
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <p className="text-sm text-slate-500 mb-1">Adresse</p>
-            <p className="font-medium flex items-center gap-2">
-              <MapPin size={16} className="text-slate-400" />
+            <p className="text-xs text-primary-500 mb-1 uppercase font-semibold tracking-wide">Adresse</p>
+            <p className="text-sm font-medium flex items-center gap-2 text-primary-900">
+              <MapPin size={16} className="text-primary-400" />
               {company.address}, {company.postalCode} {company.city}
             </p>
           </div>
           {company.contactName && (
             <div>
-              <p className="text-sm text-slate-500 mb-1">Contact</p>
-              <p className="font-medium flex items-center gap-2">
-                <User size={16} className="text-slate-400" />
+              <p className="text-xs text-primary-500 mb-1 uppercase font-semibold tracking-wide">Contact</p>
+              <p className="text-sm font-medium flex items-center gap-2 text-primary-900">
+                <User size={16} className="text-primary-400" />
                 {company.contactName}
               </p>
             </div>
           )}
           {company.phone && (
             <div>
-              <p className="text-sm text-slate-500 mb-1">Téléphone</p>
-              <p className="font-medium flex items-center gap-2">
-                <Phone size={16} className="text-slate-400" />
+              <p className="text-xs text-primary-500 mb-1 uppercase font-semibold tracking-wide">Téléphone</p>
+              <p className="text-sm font-medium flex items-center gap-2 text-primary-900">
+                <Phone size={16} className="text-primary-400" />
                 {company.phone}
               </p>
             </div>
           )}
           {company.email && (
             <div>
-              <p className="text-sm text-slate-500 mb-1">Email</p>
-              <p className="font-medium flex items-center gap-2">
-                <Mail size={16} className="text-slate-400" />
+              <p className="text-xs text-primary-500 mb-1 uppercase font-semibold tracking-wide">Email</p>
+              <p className="text-sm font-medium flex items-center gap-2 text-primary-900">
+                <Mail size={16} className="text-primary-400" />
                 {company.email}
               </p>
             </div>
           )}
         </div>
 
-        {/* Tags */}
         <div>
-          <p className="text-sm text-slate-500 mb-2">Activités</p>
+          <p className="text-xs text-primary-500 mb-2 uppercase font-semibold tracking-wide">Activités</p>
           <TagSelector selectedTags={company.tags} readonly />
         </div>
 
-        {/* Historique */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-bold flex items-center gap-2">
-              <MessageSquare size={20} />
+            <h3 className="text-base font-bold flex items-center gap-2 text-primary-900">
+              <MessageSquare size={18} />
               Historique ({company.history?.length || 0})
             </h3>
             {canEdit && (
               <Button
                 variant="secondary"
                 icon={Plus}
+                size="sm"
                 onClick={() => setShowCommentForm(!showCommentForm)}
               >
                 Ajouter
@@ -727,7 +733,7 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
           </div>
 
           {showCommentForm && (
-            <form onSubmit={handleAddComment} className="mb-4 p-4 bg-slate-50 rounded-lg">
+            <form onSubmit={handleAddComment} className="mb-4 p-4 bg-primary-50 rounded-lg border border-primary-200">
               <Textarea
                 label="Commentaire"
                 value={comment}
@@ -736,41 +742,40 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
                 required
               />
               <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-700 mb-2">Note</label>
+                <label className="form-label">Note</label>
                 <StarRating rating={commentRating} onRate={setCommentRating} />
               </div>
               <div className="flex gap-2">
-                <Button type="submit" icon={Check}>Publier</Button>
-                <Button type="button" variant="ghost" onClick={() => setShowCommentForm(false)}>Annuler</Button>
+                <Button type="submit" icon={Check} size="sm">Publier</Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setShowCommentForm(false)}>Annuler</Button>
               </div>
             </form>
           )}
 
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {company.history?.length === 0 && (
-              <p className="text-slate-500 text-center py-4">Aucun commentaire pour le moment</p>
+              <p className="text-primary-500 text-sm text-center py-4">Aucun commentaire</p>
             )}
             {company.history?.map(item => (
-              <div key={item.id} className="p-4 bg-slate-50 rounded-lg">
+              <div key={item.id} className="p-4 bg-primary-50 rounded-lg border border-primary-200">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-slate-900">{item.authorName}</span>
-                  <span className="text-sm text-slate-500 flex items-center gap-1">
-                    <Calendar size={14} />
+                  <span className="font-semibold text-sm text-primary-900">{item.authorName}</span>
+                  <span className="text-xs text-primary-500 flex items-center gap-1">
+                    <Calendar size={12} />
                     {new Date(item.date).toLocaleDateString('fr-FR')}
                   </span>
                 </div>
                 <StarRating rating={item.rating} readonly />
-                <p className="text-slate-700 mt-2">{item.comment}</p>
+                <p className="text-sm text-primary-700 mt-2">{item.comment}</p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Actions */}
         {canEdit && (
-          <div className="flex gap-3 pt-4 border-t border-slate-200">
-            <Button icon={Edit2} onClick={onEdit}>Modifier</Button>
-            <Button variant="danger" icon={Trash2} onClick={onDelete}>Supprimer</Button>
+          <div className="flex gap-3 pt-4 divider">
+            <Button icon={Edit2} size="sm" onClick={onEdit}>Modifier</Button>
+            <Button variant="danger" icon={Trash2} size="sm" onClick={onDelete}>Supprimer</Button>
           </div>
         )}
       </div>
@@ -782,54 +787,42 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
 // CARTE ENTREPRISE
 // =============================================================================
 const CompanyCard = ({ company, onClick }) => {
-  const statusInfo = STATUS_OPTIONS.find(s => s.value === company.status);
-
   return (
-    <div
-      onClick={onClick}
-      className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden border-2 border-transparent hover:border-amber-200 group"
-    >
-      <div className="p-6">
-        <div className="flex items-start justify-between mb-3">
-          <h3 className="text-xl font-bold text-slate-900 group-hover:text-amber-600 transition-colors">
-            {company.name}
-          </h3>
-          <StarRating rating={company.rating} readonly />
-        </div>
-
-        <div className="space-y-2 mb-4">
-          <p className="text-slate-600 flex items-center gap-2">
-            <MapPin size={16} className="text-slate-400" />
-            {company.postalCode} {company.city}
-          </p>
-          {company.contactName && (
-            <p className="text-slate-600 flex items-center gap-2">
-              <User size={16} className="text-slate-400" />
-              {company.contactName}
-            </p>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-2 mb-4">
-          {company.tags.slice(0, 3).map(tag => (
-            <span key={tag} className="px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-medium">
-              {tag}
-            </span>
-          ))}
-          {company.tags.length > 3 && (
-            <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-medium">
-              +{company.tags.length - 3}
-            </span>
-          )}
-        </div>
-
-        <span
-          className="inline-block px-3 py-1 rounded-full text-xs font-medium"
-          style={{ backgroundColor: `${statusInfo.color}20`, color: statusInfo.color }}
-        >
-          {statusInfo.label}
-        </span>
+    <div onClick={onClick} className="card card-interactive p-6">
+      <div className="flex items-start justify-between mb-3">
+        <h3 className="text-lg font-bold text-primary-900 group-hover:text-accent-600 transition-colors">
+          {company.name}
+        </h3>
+        <StarRating rating={company.rating} readonly />
       </div>
+
+      <div className="space-y-2 mb-4">
+        <p className="text-sm text-primary-600 flex items-center gap-2">
+          <MapPin size={14} className="text-primary-400" />
+          {company.postalCode} {company.city}
+        </p>
+        {company.contactName && (
+          <p className="text-sm text-primary-600 flex items-center gap-2">
+            <User size={14} className="text-primary-400" />
+            {company.contactName}
+          </p>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        {company.tags.slice(0, 3).map(tag => (
+          <span key={tag} className="px-2 py-1 bg-accent-50 text-accent-700 rounded text-xs font-medium">
+            {tag}
+          </span>
+        ))}
+        {company.tags.length > 3 && (
+          <span className="px-2 py-1 bg-primary-100 text-primary-600 rounded text-xs font-medium">
+            +{company.tags.length - 3}
+          </span>
+        )}
+      </div>
+
+      <StatusBadge status={company.status} />
     </div>
   );
 };
@@ -919,40 +912,45 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-slate-50">
+    <div className="min-h-screen bg-primary-50">
       {/* Header */}
-      <header className="bg-white shadow-md sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4">
+      <header className="sticky top-0 z-40 backdrop-professional border-b border-primary-200">
+        <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-amber-100 p-3 rounded-xl">
-                <Building2 size={32} className="text-amber-600" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">Stages Menuiserie</h1>
-                <p className="text-sm text-slate-600">{companies.length} entreprises</p>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary-900 rounded-lg flex items-center justify-center shadow-sm">
+                  <Building2 size={24} className="text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-primary-900 leading-none">Stages Menuiserie</h1>
+                  <p className="text-xs text-primary-500 mt-0.5">{companies.length} entreprises</p>
+                </div>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="text-right mr-4">
-                <p className="font-semibold text-slate-900">{currentUser.name}</p>
-                <span className={`text-xs px-2 py-1 rounded-full ${
-                  currentUser.role === 'admin' ? 'bg-purple-100 text-purple-700' :
-                  currentUser.role === 'teacher' ? 'bg-blue-100 text-blue-700' :
-                  'bg-green-100 text-green-700'
-                }`}>
-                  {currentUser.role === 'admin' ? '👨‍💼 Admin' : currentUser.role === 'teacher' ? '👨‍🏫 Professeur' : '👨‍🎓 Élève'}
-                </span>
+              <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-primary-50 rounded-lg border border-primary-200">
+                <User size={16} className="text-primary-400" />
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-primary-900 leading-none">{currentUser.name}</p>
+                  <span className={`text-xs mt-0.5 inline-block px-2 py-0.5 rounded ${
+                    currentUser.role === 'admin' ? 'bg-primary-900 text-white' :
+                    currentUser.role === 'teacher' ? 'bg-accent-100 text-accent-700' :
+                    'bg-success-100 text-success-700'
+                  }`}>
+                    {currentUser.role === 'admin' ? 'Admin' : currentUser.role === 'teacher' ? 'Professeur' : 'Élève'}
+                  </span>
+                </div>
               </div>
 
               {currentUser.role === 'admin' && (
-                <Button variant="secondary" icon={Users} onClick={() => setShowUserManagement(true)}>
+                <Button variant="secondary" icon={Users} size="sm" onClick={() => setShowUserManagement(true)}>
                   Utilisateurs
                 </Button>
               )}
 
-              <Button variant="ghost" icon={LogOut} onClick={() => setCurrentUser(null)}>
+              <Button variant="ghost" icon={LogOut} size="sm" onClick={() => setCurrentUser(null)}>
                 Déconnexion
               </Button>
             </div>
@@ -960,62 +958,59 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main */}
       <main className="container mx-auto px-4 py-8">
-        {/* Barre de recherche et filtres */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
-          <div className="flex flex-wrap gap-4 items-center justify-between mb-4">
-            <div className="flex-1 min-w-[300px]">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                <input
-                  type="text"
-                  placeholder="Rechercher une entreprise ou une ville..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-amber-500 transition-colors"
-                />
-              </div>
+        <div className="card p-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-400" size={18} />
+              <input
+                type="text"
+                placeholder="Rechercher une entreprise ou une ville..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10"
+              />
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <Button
                 variant={showFilters ? 'primary' : 'secondary'}
                 icon={Filter}
                 onClick={() => setShowFilters(!showFilters)}
               >
-                Filtres {(selectedTags.length > 0 || selectedStatus !== 'all' || postalCodeFilter) && `(${selectedTags.length + (selectedStatus !== 'all' ? 1 : 0) + (postalCodeFilter ? 1 : 0)})`}
+                Filtres
+                {(selectedTags.length > 0 || selectedStatus !== 'all' || postalCodeFilter) && 
+                  ` (${selectedTags.length + (selectedStatus !== 'all' ? 1 : 0) + (postalCodeFilter ? 1 : 0)})`
+                }
               </Button>
 
               {canEdit && (
                 <Button icon={Plus} onClick={() => setShowAddForm(true)}>
-                  Ajouter une entreprise
+                  Ajouter
                 </Button>
               )}
             </div>
           </div>
 
-          {/* Panneau de filtres */}
           {showFilters && (
-            <div className="pt-4 border-t border-slate-200 animate-slideDown">
-              <div className="grid md:grid-cols-3 gap-6">
+            <div className="pt-4 divider animate-slideDown">
+              <div className="grid md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Code postal</label>
+                  <label className="form-label">Code postal</label>
                   <input
                     type="text"
-                    placeholder="75, 69, etc."
+                    placeholder="74, 75, etc."
                     value={postalCodeFilter}
                     onChange={(e) => setPostalCodeFilter(e.target.value)}
-                    className="w-full px-4 py-2 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Statut</label>
+                  <label className="form-label">Statut</label>
                   <select
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="w-full px-4 py-2 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-amber-500"
                   >
                     <option value="all">Tous les statuts</option>
                     {STATUS_OPTIONS.map(opt => (
@@ -1025,16 +1020,16 @@ export default function App() {
                 </div>
 
                 <div className="md:col-span-3">
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Activités</label>
+                  <label className="form-label">Activités</label>
                   <div className="flex flex-wrap gap-2">
                     {PREDEFINED_TAGS.map(tag => (
                       <button
                         key={tag}
                         onClick={() => toggleTagFilter(tag)}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                           selectedTags.includes(tag)
-                            ? 'bg-amber-600 text-white'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            ? 'bg-accent-600 text-white'
+                            : 'bg-primary-100 text-primary-700 hover:bg-primary-200'
                         }`}
                       >
                         {tag}
@@ -1052,9 +1047,9 @@ export default function App() {
                       setSelectedStatus('all');
                       setPostalCodeFilter('');
                     }}
-                    className="text-sm text-amber-600 hover:text-amber-700 font-medium"
+                    className="text-sm text-accent-600 hover:text-accent-700 font-medium"
                   >
-                    Réinitialiser les filtres
+                    Réinitialiser
                   </button>
                 </div>
               )}
@@ -1062,13 +1057,12 @@ export default function App() {
           )}
         </div>
 
-        {/* Liste des entreprises */}
         {filteredCompanies.length === 0 ? (
           <div className="text-center py-12">
-            <Building2 size={64} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-500 text-lg">Aucune entreprise trouvée</p>
+            <Building2 size={48} className="mx-auto text-primary-300 mb-4" />
+            <p className="text-primary-500 text-base">Aucune entreprise trouvée</p>
             {canEdit && (
-              <Button icon={Plus} onClick={() => setShowAddForm(true)} className="mt-4 mx-auto">
+              <Button icon={Plus} onClick={() => setShowAddForm(true)} className="mt-4">
                 Ajouter la première entreprise
               </Button>
             )}
@@ -1127,48 +1121,6 @@ export default function App() {
           onClose={() => setShowUserManagement(false)}
         />
       )}
-
-      {/* Styles d'animation */}
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            max-height: 0;
-          }
-          to {
-            opacity: 1;
-            max-height: 500px;
-          }
-        }
-        
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
-        }
-        
-        .animate-slideUp {
-          animation: slideUp 0.4s ease-out;
-        }
-        
-        .animate-slideDown {
-          animation: slideDown 0.3s ease-out;
-        }
-      `}</style>
     </div>
   );
 }
