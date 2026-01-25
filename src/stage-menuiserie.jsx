@@ -1,5 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, Search, Filter, Star, MapPin, Tag, Edit2, Trash2, MessageSquare, Users, LogOut, Eye, EyeOff, X, Calendar, User, Mail, Phone, AlertCircle, Check } from 'lucide-react';
+import { 
+  FaBuilding,
+  FaPlus,
+  FaSearch,
+  FaFilter,
+  FaStar,
+  FaRegStar,
+  FaMapMarkerAlt,
+  FaTag,
+  FaEdit,
+  FaTrash,
+  FaComments,
+  FaUsers,
+  FaSignOutAlt,
+  FaEye,
+  FaEyeSlash,
+  FaTimes,
+  FaCalendar,
+  FaUser,
+  FaEnvelope,
+  FaPhone,
+  FaExclamationCircle,
+  FaCheck,
+  FaFileExport,
+  FaFilePdf,
+  FaFileExcel,
+  FaPrint
+} from 'react-icons/fa';
+
 import { 
   signInWithEmailAndPassword, 
   signOut as firebaseSignOut,
@@ -159,6 +187,146 @@ const firebaseService = {
 const firebase = firebaseService;
 
 // =============================================================================
+// FONCTIONS D'EXPORT
+// =============================================================================
+
+const exportToPDF = async (companies, filename = 'entreprises-stages.pdf') => {
+  const jsPDF = (await import('jspdf')).jsPDF;
+  await import('jspdf-autotable');
+  
+  const doc = new jsPDF();
+  
+  doc.setFontSize(18);
+  doc.setFont(undefined, 'bold');
+  doc.text('Liste des Entreprises - Stages Menuiserie', 14, 20);
+  
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'normal');
+  doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 14, 28);
+  
+  const tableData = companies.map(c => [
+    c.name,
+    `${c.postalCode} ${c.city}`,
+    c.contactName || '-',
+    c.phone || '-',
+    c.tags.join(', '),
+    c.status === 'active' ? 'Actif' : c.status === 'inactive' ? 'Inactif' : 'Déconseillée',
+    '★'.repeat(c.rating)
+  ]);
+  
+  doc.autoTable({
+    startY: 35,
+    head: [['Entreprise', 'Localisation', 'Contact', 'Téléphone', 'Activités', 'Statut', 'Note']],
+    body: tableData,
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    margin: { top: 35 }
+  });
+  
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.text(
+      `Page ${i} sur ${pageCount}`,
+      doc.internal.pageSize.width / 2,
+      doc.internal.pageSize.height - 10,
+      { align: 'center' }
+    );
+  }
+  
+  doc.save(filename);
+};
+
+const exportToExcel = async (companies, filename = 'entreprises-stages.xlsx') => {
+  const XLSX = await import('xlsx');
+  
+  const worksheet = XLSX.utils.json_to_sheet(
+    companies.map(c => ({
+      'Entreprise': c.name,
+      'Adresse': c.address,
+      'Code Postal': c.postalCode,
+      'Ville': c.city,
+      'Contact': c.contactName || '',
+      'Téléphone': c.phone || '',
+      'Email': c.email || '',
+      'Activités': c.tags.join(', '),
+      'Statut': c.status === 'active' ? 'Accepte des stagiaires' : 
+                c.status === 'inactive' ? 'N\'accepte plus' : 'Déconseillée',
+      'Note': c.rating,
+      'Commentaires': c.history?.length || 0
+    }))
+  );
+  
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Entreprises');
+  
+  worksheet['!cols'] = [
+    { wch: 25 }, { wch: 30 }, { wch: 12 }, { wch: 20 },
+    { wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 35 },
+    { wch: 25 }, { wch: 8 }, { wch: 15 }
+  ];
+  
+  XLSX.writeFile(workbook, filename);
+};
+
+const printCompanies = (companies) => {
+  const printWindow = window.open('', '_blank');
+  
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Liste des Entreprises - Stages Menuiserie</title>
+      <style>
+        @page { size: A4; margin: 1.5cm; }
+        body { font-family: 'Inter', Arial, sans-serif; font-size: 11pt; color: #000; }
+        h1 { text-align: center; color: #0F172A; font-size: 20pt; margin-bottom: 10px; border-bottom: 2px solid #0F172A; padding-bottom: 10px; }
+        .subtitle { text-align: center; color: #64748B; margin-bottom: 20px; font-size: 10pt; }
+        .company-card { border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px; margin-bottom: 15px; page-break-inside: avoid; }
+        .company-header { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px; }
+        .company-name { font-size: 13pt; font-weight: bold; color: #0F172A; }
+        .rating { color: #F59E0B; }
+        .info-row { margin-bottom: 4px; font-size: 10pt; }
+        .info-label { font-weight: 600; color: #475569; margin-right: 8px; }
+        .tags { margin-top: 8px; }
+        .tag { display: inline-block; background: #E0E7FF; color: #3730A3; padding: 2px 8px; border-radius: 4px; font-size: 9pt; margin-right: 4px; }
+        .status { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 9pt; font-weight: 600; margin-top: 8px; }
+        .status-active { background: #D1FAE5; color: #065F46; border: 1px solid #10B981; }
+        .status-inactive { background: #FEF3C7; color: #92400E; border: 1px solid #F59E0B; }
+        .status-danger { background: #FEE2E2; color: #991B1B; border: 1px solid #EF4444; }
+      </style>
+    </head>
+    <body>
+      <h1>Liste des Entreprises</h1>
+      <p class="subtitle">Stages Menuiserie - ${new Date().toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      ${companies.map(c => `
+        <div class="company-card">
+          <div class="company-header">
+            <div class="company-name">${c.name}</div>
+            <div class="rating">${'★'.repeat(c.rating)}</div>
+          </div>
+          <div class="info-row"><span class="info-label">Adresse:</span>${c.address}, ${c.postalCode} ${c.city}</div>
+          ${c.contactName ? `<div class="info-row"><span class="info-label">Contact:</span>${c.contactName}</div>` : ''}
+          ${c.phone ? `<div class="info-row"><span class="info-label">Téléphone:</span>${c.phone}</div>` : ''}
+          ${c.email ? `<div class="info-row"><span class="info-label">Email:</span>${c.email}</div>` : ''}
+          <div class="tags">${c.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>
+          <div class="status status-${c.status === 'active' ? 'active' : c.status === 'inactive' ? 'inactive' : 'danger'}">
+            ${c.status === 'active' ? '✓ Accepte' : c.status === 'inactive' ? '⚠ N\'accepte plus' : '✗ Déconseillée'}
+          </div>
+        </div>
+      `).join('')}
+    </body>
+    </html>
+  `;
+  
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+  printWindow.onload = () => printWindow.print();
+};
+
+// =============================================================================
 // DONNÉES PRÉDÉFINIES
 // =============================================================================
 const PREDEFINED_TAGS = [
@@ -180,15 +348,87 @@ const STATUS_OPTIONS = [
 ];
 
 // =============================================================================
+// MENU D'EXPORT
+// =============================================================================
+const ExportMenu = ({ companies, filteredCompanies }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const handleExport = (type) => {
+    const dataToExport = filteredCompanies.length > 0 ? filteredCompanies : companies;
+    
+    switch(type) {
+      case 'pdf':
+        exportToPDF(dataToExport);
+        break;
+      case 'excel':
+        exportToExcel(dataToExport);
+        break;
+      case 'print':
+        printCompanies(dataToExport);
+        break;
+    }
+    
+    setIsOpen(false);
+  };
+  
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="btn btn-secondary flex items-center gap-2"
+      >
+        <FaFileExport size={16} />
+        <span>Exporter</span>
+      </button>
+      
+      {isOpen && (
+        <>
+          <div 
+            className="fixed inset-0 z-10" 
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border-2 border-primary-300 py-2 z-20 animate-slideDown">
+            <button
+              onClick={() => handleExport('pdf')}
+              className="w-full px-4 py-2.5 text-left text-sm hover:bg-primary-50 transition-colors flex items-center gap-3 text-primary-800 font-semibold"
+            >
+              <FaFilePdf size={16} className="text-danger-600" />
+              Export PDF
+            </button>
+            <button
+              onClick={() => handleExport('excel')}
+              className="w-full px-4 py-2.5 text-left text-sm hover:bg-primary-50 transition-colors flex items-center gap-3 text-primary-800 font-semibold"
+            >
+              <FaFileExcel size={16} className="text-success-600" />
+              Export Excel
+            </button>
+            <div className="border-t border-primary-200 my-1" />
+            <button
+              onClick={() => handleExport('print')}
+              className="w-full px-4 py-2.5 text-left text-sm hover:bg-primary-50 transition-colors flex items-center gap-3 text-primary-800 font-semibold"
+            >
+              <FaPrint size={16} className="text-primary-600" />
+              Imprimer
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+// =============================================================================
 // COMPOSANTS UI PROFESSIONNELS
 // =============================================================================
 
 const Button = ({ children, variant = 'primary', icon: Icon, onClick, disabled, type = 'button', className = '', size = 'default' }) => {
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-xs',
-    default: 'px-4 py-2 text-sm',
+    default: 'px-4 py-2.5 text-sm',
     lg: 'px-6 py-3 text-base'
   };
+
+  const iconSize = size === 'sm' ? 14 : size === 'lg' ? 18 : 16;
 
   return (
     <button
@@ -197,7 +437,7 @@ const Button = ({ children, variant = 'primary', icon: Icon, onClick, disabled, 
       disabled={disabled}
       className={`btn btn-${variant} ${sizeClasses[size]} ${className}`}
     >
-      {Icon && <Icon size={size === 'sm' ? 16 : size === 'lg' ? 20 : 18} />}
+      {Icon && <Icon size={iconSize} className="flex-shrink-0" />}
       {children}
     </button>
   );
@@ -208,8 +448,8 @@ const Input = ({ label, icon: Icon, error, className = '', ...props }) => (
     {label && <label className="form-label">{label}</label>}
     <div className="relative">
       {Icon && (
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-400">
-          <Icon size={18} />
+        <div className="input-icon-left">
+          <Icon size={16} />
         </div>
       )}
       <input
@@ -254,10 +494,10 @@ const Modal = ({ isOpen, onClose, title, children, size = 'default' }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
       <div className="absolute inset-0 bg-primary-900/20 backdrop-blur-sm" onClick={onClose} />
       <div className={`relative bg-white rounded-xl shadow-xl ${sizeClasses[size]} w-full max-h-[90vh] overflow-hidden animate-scaleIn`}>
-        <div className="sticky top-0 backdrop-professional border-b border-primary-200 px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 backdrop-professional border-b border-primary-300 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-bold text-primary-900">{title}</h2>
-          <button onClick={onClose} className="btn-ghost p-2 rounded-lg">
-            <X size={20} />
+          <button onClick={onClose} className="btn-ghost p-2 rounded-lg hover:bg-primary-100">
+            <FaTimes size={20} />
           </button>
         </div>
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-5rem)]">
@@ -279,10 +519,11 @@ const StarRating = ({ rating, onRate, readonly = false }) => {
           disabled={readonly}
           className={`${readonly ? 'cursor-default' : 'cursor-pointer hover:scale-110'} transition-transform`}
         >
-          <Star
-            size={20}
-            className={star <= rating ? 'fill-warning-500 text-warning-500' : 'text-primary-300'}
-          />
+          {star <= rating ? (
+            <FaStar size={20} className="text-warning-500" />
+          ) : (
+            <FaRegStar size={20} className="text-primary-300" />
+          )}
         </button>
       ))}
     </div>
@@ -299,13 +540,13 @@ const TagSelector = ({ selectedTags, onToggle, readonly = false }) => (
           type="button"
           onClick={() => !readonly && onToggle(tag)}
           disabled={readonly}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
             isSelected
-              ? 'bg-accent-600 text-white shadow-sm'
-              : 'bg-primary-100 text-primary-700 hover:bg-primary-200'
+              ? 'bg-accent-600 text-white shadow-sm border-2 border-accent-600'
+              : 'bg-primary-100 text-primary-800 hover:bg-primary-200 border-2 border-primary-200'
           } ${readonly ? 'cursor-default' : 'cursor-pointer'}`}
         >
-          <Tag size={14} />
+          <FaTag size={12} />
           {tag}
         </button>
       );
@@ -315,9 +556,10 @@ const TagSelector = ({ selectedTags, onToggle, readonly = false }) => (
 
 const StatusBadge = ({ status }) => {
   const statusConfig = STATUS_OPTIONS.find(s => s.value === status);
-  const Icon = status === 'active' ? Check : status === 'inactive' ? AlertCircle : X;
+  const Icon = status === 'active' ? FaCheck : status === 'inactive' ? FaExclamationCircle : FaTimes;
+  
   return (
-    <span className={`badge badge-${statusConfig.color} inline-flex items-center gap-1`}>
+    <span className={`badge badge-${statusConfig.color} inline-flex items-center gap-1.5`}>
       <Icon size={12} />
       {statusConfig.label}
     </span>
@@ -360,7 +602,7 @@ const LoginPage = ({ onLogin }) => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8 animate-slideUp">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-900 rounded-xl mb-4 shadow-lg">
-            <Building2 size={32} className="text-white" />
+            <FaBuilding size={32} className="text-white" />
           </div>
           <h1 className="text-3xl font-bold text-primary-900 mb-2">Stages Menuiserie</h1>
           <p className="text-primary-600">Gestion des entreprises partenaires</p>
@@ -371,7 +613,7 @@ const LoginPage = ({ onLogin }) => {
             <Input
               label="Adresse email"
               type="email"
-              icon={Mail}
+              icon={FaEnvelope}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="votre.email@lycee.fr"
@@ -386,7 +628,7 @@ const LoginPage = ({ onLogin }) => {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pr-10"
+                  className="w-full pr-10"
                   placeholder="••••••••"
                   required
                   autoComplete="current-password"
@@ -394,16 +636,16 @@ const LoginPage = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-primary-400 hover:text-primary-600 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-primary-400 hover:text-primary-700 transition-colors"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                 </button>
               </div>
             </div>
 
             {error && (
-              <div className="flex items-start gap-3 p-3 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 text-sm animate-slideDown">
-                <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 p-3 bg-danger-50 border-2 border-danger-200 rounded-lg text-danger-700 text-sm animate-slideDown">
+                <FaExclamationCircle size={18} className="flex-shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
             )}
@@ -458,13 +700,13 @@ const UserManagement = ({ currentUser, onClose }) => {
   return (
     <Modal isOpen={true} onClose={onClose} title="Gestion des Utilisateurs">
       <div className="mb-6">
-        <Button icon={Plus} onClick={() => setShowAddUser(!showAddUser)}>
+        <Button icon={FaPlus} onClick={() => setShowAddUser(!showAddUser)}>
           Ajouter un utilisateur
         </Button>
       </div>
 
       {showAddUser && (
-        <form onSubmit={handleAddUser} className="mb-6 p-4 bg-primary-50 rounded-lg">
+        <form onSubmit={handleAddUser} className="mb-6 p-4 bg-primary-50 rounded-lg border border-primary-200">
           <h3 className="font-bold text-lg mb-4 text-primary-900">Nouvel Utilisateur</h3>
           <Input
             label="Nom complet"
@@ -495,26 +737,26 @@ const UserManagement = ({ currentUser, onClose }) => {
               { value: 'student', label: '👨‍🎓 Élève' }
             ]}
           />
-          <Button type="submit" icon={Check}>Créer l'utilisateur</Button>
+          <Button type="submit" icon={FaCheck}>Créer l'utilisateur</Button>
         </form>
       )}
 
       <div className="space-y-3">
         {users.map(user => (
-          <div key={user.id} className="flex items-center justify-between p-4 bg-primary-50 rounded-lg border border-primary-200">
+          <div key={user.id} className="flex items-center justify-between p-4 bg-primary-50 rounded-lg border-2 border-primary-200">
             <div className="flex-1">
               <p className="font-semibold text-primary-900">{user.name}</p>
               <p className="text-sm text-primary-600">{user.email}</p>
-              <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-medium ${
-                user.role === 'admin' ? 'bg-primary-900 text-white' :
-                user.role === 'teacher' ? 'bg-accent-100 text-accent-700' :
-                'bg-success-100 text-success-700'
+              <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-semibold border-2 ${
+                user.role === 'admin' ? 'bg-primary-900 text-white border-primary-900' :
+                user.role === 'teacher' ? 'bg-accent-100 text-accent-800 border-accent-300' :
+                'bg-success-100 text-success-800 border-success-300'
               }`}>
                 {user.role === 'admin' ? '👨‍💼 Admin' : user.role === 'teacher' ? '👨‍🏫 Professeur' : '👨‍🎓 Élève'}
               </span>
             </div>
             {user.id !== currentUser.id && (
-              <Button variant="danger" icon={Trash2} size="sm" onClick={() => handleDeleteUser(user.id)}>
+              <Button variant="danger" icon={FaTrash} size="sm" onClick={() => handleDeleteUser(user.id)}>
                 Supprimer
               </Button>
             )}
@@ -599,14 +841,14 @@ const CompanyForm = ({ company, onSave, onCancel, currentUser }) => {
         <Input
           label="Téléphone"
           type="tel"
-          icon={Phone}
+          icon={FaPhone}
           value={formData.phone}
           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
         />
         <Input
           label="Email"
           type="email"
-          icon={Mail}
+          icon={FaEnvelope}
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
         />
@@ -630,7 +872,7 @@ const CompanyForm = ({ company, onSave, onCancel, currentUser }) => {
       </div>
 
       <div className="flex gap-3 pt-4">
-        <Button type="submit" icon={Check}>
+        <Button type="submit" icon={FaCheck}>
           {company ? 'Enregistrer' : 'Ajouter'}
         </Button>
         <Button type="button" variant="secondary" onClick={onCancel}>
@@ -676,7 +918,7 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
           <div>
             <p className="text-xs text-primary-500 mb-1 uppercase font-semibold tracking-wide">Adresse</p>
             <p className="text-sm font-medium flex items-center gap-2 text-primary-900">
-              <MapPin size={16} className="text-primary-400" />
+              <FaMapMarkerAlt size={16} className="text-primary-400" />
               {company.address}, {company.postalCode} {company.city}
             </p>
           </div>
@@ -684,7 +926,7 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
             <div>
               <p className="text-xs text-primary-500 mb-1 uppercase font-semibold tracking-wide">Contact</p>
               <p className="text-sm font-medium flex items-center gap-2 text-primary-900">
-                <User size={16} className="text-primary-400" />
+                <FaUser size={16} className="text-primary-400" />
                 {company.contactName}
               </p>
             </div>
@@ -693,7 +935,7 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
             <div>
               <p className="text-xs text-primary-500 mb-1 uppercase font-semibold tracking-wide">Téléphone</p>
               <p className="text-sm font-medium flex items-center gap-2 text-primary-900">
-                <Phone size={16} className="text-primary-400" />
+                <FaPhone size={16} className="text-primary-400" />
                 {company.phone}
               </p>
             </div>
@@ -702,7 +944,7 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
             <div>
               <p className="text-xs text-primary-500 mb-1 uppercase font-semibold tracking-wide">Email</p>
               <p className="text-sm font-medium flex items-center gap-2 text-primary-900">
-                <Mail size={16} className="text-primary-400" />
+                <FaEnvelope size={16} className="text-primary-400" />
                 {company.email}
               </p>
             </div>
@@ -717,13 +959,13 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-bold flex items-center gap-2 text-primary-900">
-              <MessageSquare size={18} />
+              <FaComments size={18} />
               Historique ({company.history?.length || 0})
             </h3>
             {canEdit && (
               <Button
                 variant="secondary"
-                icon={Plus}
+                icon={FaPlus}
                 size="sm"
                 onClick={() => setShowCommentForm(!showCommentForm)}
               >
@@ -733,7 +975,7 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
           </div>
 
           {showCommentForm && (
-            <form onSubmit={handleAddComment} className="mb-4 p-4 bg-primary-50 rounded-lg border border-primary-200">
+            <form onSubmit={handleAddComment} className="mb-4 p-4 bg-primary-50 rounded-lg border-2 border-primary-200">
               <Textarea
                 label="Commentaire"
                 value={comment}
@@ -746,7 +988,7 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
                 <StarRating rating={commentRating} onRate={setCommentRating} />
               </div>
               <div className="flex gap-2">
-                <Button type="submit" icon={Check} size="sm">Publier</Button>
+                <Button type="submit" icon={FaCheck} size="sm">Publier</Button>
                 <Button type="button" variant="ghost" size="sm" onClick={() => setShowCommentForm(false)}>Annuler</Button>
               </div>
             </form>
@@ -757,11 +999,11 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
               <p className="text-primary-500 text-sm text-center py-4">Aucun commentaire</p>
             )}
             {company.history?.map(item => (
-              <div key={item.id} className="p-4 bg-primary-50 rounded-lg border border-primary-200">
+              <div key={item.id} className="p-4 bg-primary-50 rounded-lg border-2 border-primary-200">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-semibold text-sm text-primary-900">{item.authorName}</span>
                   <span className="text-xs text-primary-500 flex items-center gap-1">
-                    <Calendar size={12} />
+                    <FaCalendar size={12} />
                     {new Date(item.date).toLocaleDateString('fr-FR')}
                   </span>
                 </div>
@@ -774,8 +1016,8 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
 
         {canEdit && (
           <div className="flex gap-3 pt-4 divider">
-            <Button icon={Edit2} size="sm" onClick={onEdit}>Modifier</Button>
-            <Button variant="danger" icon={Trash2} size="sm" onClick={onDelete}>Supprimer</Button>
+            <Button icon={FaEdit} size="sm" onClick={onEdit}>Modifier</Button>
+            <Button variant="danger" icon={FaTrash} size="sm" onClick={onDelete}>Supprimer</Button>
           </div>
         )}
       </div>
@@ -798,12 +1040,12 @@ const CompanyCard = ({ company, onClick }) => {
 
       <div className="space-y-2 mb-4">
         <p className="text-sm text-primary-600 flex items-center gap-2">
-          <MapPin size={14} className="text-primary-400" />
+          <FaMapMarkerAlt size={14} className="text-primary-400 flex-shrink-0" />
           {company.postalCode} {company.city}
         </p>
         {company.contactName && (
           <p className="text-sm text-primary-600 flex items-center gap-2">
-            <User size={14} className="text-primary-400" />
+            <FaUser size={14} className="text-primary-400 flex-shrink-0" />
             {company.contactName}
           </p>
         )}
@@ -811,12 +1053,12 @@ const CompanyCard = ({ company, onClick }) => {
 
       <div className="flex flex-wrap gap-2 mb-4">
         {company.tags.slice(0, 3).map(tag => (
-          <span key={tag} className="px-2 py-1 bg-accent-50 text-accent-700 rounded text-xs font-medium">
+          <span key={tag} className="px-2.5 py-1 bg-accent-50 text-accent-700 rounded text-xs font-semibold border border-accent-200">
             {tag}
           </span>
         ))}
         {company.tags.length > 3 && (
-          <span className="px-2 py-1 bg-primary-100 text-primary-600 rounded text-xs font-medium">
+          <span className="px-2.5 py-1 bg-primary-100 text-primary-700 rounded text-xs font-semibold border border-primary-200">
             +{company.tags.length - 3}
           </span>
         )}
@@ -913,14 +1155,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-primary-50">
-      {/* Header */}
-      <header className="sticky top-0 z-40 backdrop-professional border-b border-primary-200">
+      <header className="sticky top-0 z-40 backdrop-professional border-b border-primary-300">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary-900 rounded-lg flex items-center justify-center shadow-sm">
-                  <Building2 size={24} className="text-white" />
+                  <FaBuilding size={24} className="text-white" />
                 </div>
                 <div>
                   <h1 className="text-lg font-bold text-primary-900 leading-none">Stages Menuiserie</h1>
@@ -930,14 +1171,14 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-primary-50 rounded-lg border border-primary-200">
-                <User size={16} className="text-primary-400" />
+              <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-primary-50 rounded-lg border-2 border-primary-200">
+                <FaUser size={16} className="text-primary-400" />
                 <div className="text-right">
                   <p className="text-sm font-semibold text-primary-900 leading-none">{currentUser.name}</p>
-                  <span className={`text-xs mt-0.5 inline-block px-2 py-0.5 rounded ${
-                    currentUser.role === 'admin' ? 'bg-primary-900 text-white' :
-                    currentUser.role === 'teacher' ? 'bg-accent-100 text-accent-700' :
-                    'bg-success-100 text-success-700'
+                  <span className={`text-xs mt-0.5 inline-block px-2 py-0.5 rounded font-semibold border ${
+                    currentUser.role === 'admin' ? 'bg-primary-900 text-white border-primary-900' :
+                    currentUser.role === 'teacher' ? 'bg-accent-100 text-accent-800 border-accent-300' :
+                    'bg-success-100 text-success-800 border-success-300'
                   }`}>
                     {currentUser.role === 'admin' ? 'Admin' : currentUser.role === 'teacher' ? 'Professeur' : 'Élève'}
                   </span>
@@ -945,12 +1186,14 @@ export default function App() {
               </div>
 
               {currentUser.role === 'admin' && (
-                <Button variant="secondary" icon={Users} size="sm" onClick={() => setShowUserManagement(true)}>
+                <Button variant="secondary" icon={FaUsers} size="sm" onClick={() => setShowUserManagement(true)}>
                   Utilisateurs
                 </Button>
               )}
 
-              <Button variant="ghost" icon={LogOut} size="sm" onClick={() => setCurrentUser(null)}>
+              <ExportMenu companies={companies} filteredCompanies={filteredCompanies} />
+
+              <Button variant="ghost" icon={FaSignOutAlt} size="sm" onClick={() => setCurrentUser(null)}>
                 Déconnexion
               </Button>
             </div>
@@ -958,12 +1201,13 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main */}
       <main className="container mx-auto px-4 py-8">
         <div className="card p-4 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-400" size={18} />
+              <div className="input-icon-left">
+                <FaSearch size={16} />
+              </div>
               <input
                 type="text"
                 placeholder="Rechercher une entreprise ou une ville..."
@@ -976,7 +1220,7 @@ export default function App() {
             <div className="flex gap-2">
               <Button
                 variant={showFilters ? 'primary' : 'secondary'}
-                icon={Filter}
+                icon={FaFilter}
                 onClick={() => setShowFilters(!showFilters)}
               >
                 Filtres
@@ -986,7 +1230,7 @@ export default function App() {
               </Button>
 
               {canEdit && (
-                <Button icon={Plus} onClick={() => setShowAddForm(true)}>
+                <Button icon={FaPlus} onClick={() => setShowAddForm(true)}>
                   Ajouter
                 </Button>
               )}
@@ -1026,12 +1270,13 @@ export default function App() {
                       <button
                         key={tag}
                         onClick={() => toggleTagFilter(tag)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border-2 ${
                           selectedTags.includes(tag)
-                            ? 'bg-accent-600 text-white'
-                            : 'bg-primary-100 text-primary-700 hover:bg-primary-200'
+                            ? 'bg-accent-600 text-white border-accent-600'
+                            : 'bg-primary-100 text-primary-800 hover:bg-primary-200 border-primary-200'
                         }`}
                       >
+                        <FaTag size={10} />
                         {tag}
                       </button>
                     ))}
@@ -1047,7 +1292,7 @@ export default function App() {
                       setSelectedStatus('all');
                       setPostalCodeFilter('');
                     }}
-                    className="text-sm text-accent-600 hover:text-accent-700 font-medium"
+                    className="text-sm text-accent-600 hover:text-accent-700 font-semibold"
                   >
                     Réinitialiser
                   </button>
@@ -1059,10 +1304,10 @@ export default function App() {
 
         {filteredCompanies.length === 0 ? (
           <div className="text-center py-12">
-            <Building2 size={48} className="mx-auto text-primary-300 mb-4" />
+            <FaBuilding size={48} className="mx-auto text-primary-300 mb-4" />
             <p className="text-primary-500 text-base">Aucune entreprise trouvée</p>
             {canEdit && (
-              <Button icon={Plus} onClick={() => setShowAddForm(true)} className="mt-4">
+              <Button icon={FaPlus} onClick={() => setShowAddForm(true)} className="mt-4">
                 Ajouter la première entreprise
               </Button>
             )}
@@ -1080,7 +1325,6 @@ export default function App() {
         )}
       </main>
 
-      {/* Modals */}
       {showAddForm && (
         <Modal isOpen={true} onClose={() => setShowAddForm(false)} title="Nouvelle Entreprise">
           <CompanyForm
