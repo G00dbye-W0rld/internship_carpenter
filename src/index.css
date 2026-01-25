@@ -7,86 +7,6 @@
   body {
     @apply antialiased;
   }
-  
-  * {
-    @apply scrollbar-thin scrollbar-thumb-amber-400 scrollbar-track-slate-100;
-  }
-}
-
-/* Composants personnalisés */
-@layer components {
-  /* Scrollbar personnalisée pour navigateurs Webkit */
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  .scrollbar-thin::-webkit-scrollbar-track {
-    @apply bg-slate-100 rounded-lg;
-  }
-  
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-amber-400 rounded-lg hover:bg-amber-500;
-  }
-  
-  /* Card hover effect */
-  .card-hover {
-    @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
-  }
-  
-  /* Bouton avec effet ripple */
-  .btn-ripple {
-    @apply relative overflow-hidden;
-  }
-  
-  .btn-ripple::after {
-    content: '';
-    @apply absolute top-1/2 left-1/2 w-0 h-0 rounded-full bg-white/30;
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
-  }
-  
-  .btn-ripple:active::after {
-    width: 300px;
-    height: 300px;
-  }
-  
-  /* Input focus ring personnalisé */
-  .input-focus {
-    @apply focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-all;
-  }
-}
-
-/* Utilitaires personnalisés */
-@layer utilities {
-  /* Gradient animé */
-  .gradient-animate {
-    background: linear-gradient(-45deg, #fbbf24, #f59e0b, #ea580c, #dc2626);
-    background-size: 400% 400%;
-    animation: gradient 15s ease infinite;
-  }
-  
-  @keyframes gradient {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-  
-  /* Text gradient */
-  .text-gradient {
-    @apply bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent;
-  }
-  
-  /* Glassmorphism */
-  .glass {
-    @apply bg-white/80 backdrop-blur-md border border-white/20;
-  }
-  
-  /* Ombre douce */
-  .shadow-soft {
-    box-shadow: 0 2px 15px -3px rgba(245, 158, 11, 0.1),
-                0 10px 20px -2px rgba(245, 158, 11, 0.05);
-  }
 }
 
 /* Animations globales */
@@ -133,49 +53,39 @@
   animation: slideDown 0.3s ease-out;
 }
 
-/* Impression */
-@media print {
-  body {
-    @apply bg-white;
-  }
-  
-  .no-print {
-    display: none !important;
-  }
-  
-  .print-break-inside-avoid {
-    break-inside: avoid;
-  }
+/* Scrollbar personnalisée (CSS pur, pas Tailwind) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #f59e0b #f1f5f9;
 }
 
-/* Mode sombre (optionnel pour future implémentation) */
-@media (prefers-color-scheme: dark) {
-  /* Variables pour le mode sombre si nécessaire */
-  :root {
-    --bg-primary: #1e293b;
-    --bg-secondary: #334155;
-    --text-primary: #f1f5f9;
-    --text-secondary: #cbd5e1;
-  }
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-/* Accessibilité - Focus visible */
+*::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #f59e0b;
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #d97706;
+}
+
+/* Accessibilité */
 :focus-visible {
-  @apply outline-2 outline-offset-2 outline-amber-500;
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
 }
 
-/* Amélioration des performances */
+/* Optimisation */
 * {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* Optimisation des images */
-img {
-  @apply max-w-full h-auto;
-}
-
-/* Transitions fluides */
-a, button, input, select, textarea {
-  @apply transition-colors duration-200;
 }
