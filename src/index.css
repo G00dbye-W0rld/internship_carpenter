@@ -10,13 +10,13 @@
    ========================================================================== */
 :root {
   --color-primary: #0F172A;
-  --color-accent: #3B82F6;
+  --color-accent: #2563EB;
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
   --radius: 0.5rem;
   --transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -41,7 +41,6 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 
-  /* Headings avec hiérarchie claire */
   h1 {
     @apply text-3xl font-bold tracking-tight text-primary-900;
   }
@@ -58,12 +57,11 @@
     @apply text-lg font-semibold text-primary-900;
   }
 
-  /* Links professionnels */
   a {
     @apply text-accent-600 hover:text-accent-700 transition-colors;
   }
 
-  /* Inputs & Selects - Style unifié */
+  /* Inputs & Selects - MEILLEUR ESPACEMENT POUR ICÔNES */
   input[type='text'],
   input[type='email'],
   input[type='password'],
@@ -71,10 +69,15 @@
   input[type='number'],
   select,
   textarea {
-    @apply w-full px-3 py-2 text-sm bg-white border border-primary-200 rounded-lg;
+    @apply w-full px-3 py-2.5 text-sm bg-white border border-primary-300 rounded-lg;
     @apply focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent;
     @apply placeholder:text-primary-400;
     @apply transition-all duration-150;
+  }
+
+  /* Espacement spécial quand il y a une icône à gauche */
+  input.has-icon-left {
+    @apply pl-10;
   }
 
   input[type='text']:hover,
@@ -83,10 +86,9 @@
   input[type='tel']:hover,
   select:hover,
   textarea:hover {
-    @apply border-primary-300;
+    @apply border-primary-400;
   }
 
-  /* Buttons - Base style */
   button {
     @apply transition-all duration-150;
     @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
@@ -94,87 +96,109 @@
 }
 
 /* ============================================================================
-   COMPONENTS - Styles réutilisables
+   COMPONENTS - CONTRASTE AMÉLIORÉ
    ========================================================================== */
 @layer components {
   /* Cards professionnelles */
   .card {
-    @apply bg-white border border-primary-200 rounded-lg shadow-sm;
+    @apply bg-white border border-primary-300 rounded-lg shadow-sm;
     @apply hover:shadow-md transition-shadow duration-200;
   }
 
   .card-interactive {
-    @apply cursor-pointer hover:border-accent-300 hover:shadow-lg;
+    @apply cursor-pointer hover:border-accent-400 hover:shadow-lg;
     @apply active:scale-[0.99] transition-all duration-150;
   }
 
   /* Badges & Tags */
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold;
   }
 
   .badge-primary {
-    @apply bg-primary-100 text-primary-700;
+    @apply bg-primary-100 text-primary-800 border border-primary-300;
   }
 
   .badge-accent {
-    @apply bg-accent-100 text-accent-700;
+    @apply bg-accent-100 text-accent-800 border border-accent-300;
   }
 
   .badge-success {
-    @apply bg-success-100 text-success-700;
+    @apply bg-success-100 text-success-800 border border-success-300;
   }
 
   .badge-warning {
-    @apply bg-warning-100 text-warning-700;
+    @apply bg-warning-100 text-warning-800 border border-warning-300;
   }
 
   .badge-danger {
-    @apply bg-danger-100 text-danger-700;
+    @apply bg-danger-100 text-danger-800 border border-danger-300;
   }
 
-  /* Buttons professionnels */
+  /* Buttons - CONTRASTE AMÉLIORÉ */
   .btn {
-    @apply inline-flex items-center justify-center gap-2;
-    @apply px-4 py-2 text-sm font-medium rounded-lg;
+    @apply inline-flex items-center justify-center gap-2.5;
+    @apply px-4 py-2.5 text-sm font-semibold rounded-lg;
     @apply transition-all duration-150;
     @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply shadow-sm;
   }
 
   .btn-primary {
-    @apply bg-primary-900 text-white;
-    @apply hover:bg-primary-800 active:bg-primary-950;
+    @apply bg-primary-900 text-white border-2 border-primary-900;
+    @apply hover:bg-primary-800 hover:border-primary-800;
+    @apply active:bg-primary-950 active:scale-95;
     @apply focus:ring-primary-500;
+    @apply shadow-md;
   }
 
   .btn-accent {
-    @apply bg-accent-600 text-white;
-    @apply hover:bg-accent-700 active:bg-accent-800;
+    @apply bg-accent-600 text-white border-2 border-accent-600;
+    @apply hover:bg-accent-700 hover:border-accent-700;
+    @apply active:bg-accent-800 active:scale-95;
     @apply focus:ring-accent-500;
+    @apply shadow-md;
   }
 
   .btn-secondary {
-    @apply bg-white text-primary-700 border border-primary-300;
-    @apply hover:bg-primary-50 hover:border-primary-400;
+    @apply bg-white text-primary-800 border-2 border-primary-400;
+    @apply hover:bg-primary-50 hover:border-primary-600;
+    @apply active:bg-primary-100 active:scale-95;
     @apply focus:ring-primary-500;
   }
 
   .btn-ghost {
-    @apply bg-transparent text-primary-600;
+    @apply bg-transparent text-primary-700 border-2 border-transparent;
     @apply hover:bg-primary-100 hover:text-primary-900;
+    @apply active:bg-primary-200 active:scale-95;
     @apply focus:ring-primary-500;
   }
 
   .btn-danger {
-    @apply bg-danger-600 text-white;
-    @apply hover:bg-danger-700 active:bg-danger-800;
+    @apply bg-danger-600 text-white border-2 border-danger-600;
+    @apply hover:bg-danger-700 hover:border-danger-700;
+    @apply active:bg-danger-800 active:scale-95;
     @apply focus:ring-danger-500;
+    @apply shadow-md;
+  }
+
+  .btn-success {
+    @apply bg-success-600 text-white border-2 border-success-600;
+    @apply hover:bg-success-700 hover:border-success-700;
+    @apply active:bg-success-800 active:scale-95;
+    @apply focus:ring-success-500;
+    @apply shadow-md;
+  }
+
+  /* Icon spacing in buttons */
+  .btn svg {
+    @apply flex-shrink-0;
   }
 
   /* Labels & Form groups */
   .form-label {
-    @apply block text-sm font-semibold text-primary-700 mb-1.5;
+    @apply block text-sm font-semibold text-primary-800 mb-1.5;
   }
 
   .form-group {
@@ -183,7 +207,7 @@
 
   /* Dividers */
   .divider {
-    @apply border-t border-primary-200;
+    @apply border-t border-primary-300;
   }
 
   /* Status indicators */
@@ -202,13 +226,23 @@
   .status-dot-danger {
     @apply bg-danger-500;
   }
+
+  /* Input icon containers - ESPACEMENT FIXÉ */
+  .input-icon-left {
+    @apply absolute left-3 top-1/2 -translate-y-1/2 text-primary-400 pointer-events-none;
+    @apply flex items-center justify-center;
+  }
+
+  .input-icon-right {
+    @apply absolute right-3 top-1/2 -translate-y-1/2 text-primary-400;
+    @apply flex items-center justify-center;
+  }
 }
 
 /* ============================================================================
-   UTILITIES - Classes utilitaires custom
+   UTILITIES
    ========================================================================== */
 @layer utilities {
-  /* Texte avec ellipsis */
   .text-ellipsis-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -223,35 +257,32 @@
     overflow: hidden;
   }
 
-  /* Gradient text */
   .text-gradient {
     @apply bg-gradient-to-r from-accent-600 to-primary-900 bg-clip-text text-transparent;
   }
 
-  /* Focus visible amélioré */
   .focus-visible-ring {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2;
   }
 
-  /* Backdrop blur professionnel */
   .backdrop-professional {
     backdrop-filter: blur(8px) saturate(180%);
     -webkit-backdrop-filter: blur(8px) saturate(180%);
-    @apply bg-white/80;
+    @apply bg-white/90;
   }
 }
 
 /* ============================================================================
-   SCROLLBAR PERSONNALISÉE - Élégante et discrète
+   SCROLLBAR PERSONNALISÉE
    ========================================================================== */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgb(203 213 225) rgb(248 250 252);
+  scrollbar-color: rgb(148 163 184) rgb(248 250 252);
 }
 
 *::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 *::-webkit-scrollbar-track {
@@ -259,16 +290,16 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgb(203 213 225);
-  border-radius: 3px;
+  background: rgb(148 163 184);
+  border-radius: 4px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: rgb(148 163 184);
+  background: rgb(100 116 139);
 }
 
 /* ============================================================================
-   ANIMATIONS - Subtiles et professionnelles
+   ANIMATIONS
    ========================================================================== */
 @keyframes fadeIn {
   from {
@@ -312,15 +343,6 @@
   }
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
-}
-
 .animate-fadeIn {
   animation: fadeIn 0.2s ease-out;
 }
@@ -337,58 +359,145 @@
   animation: scaleIn 0.2s ease-out;
 }
 
-.animate-shimmer {
-  animation: shimmer 2s infinite;
-  background: linear-gradient(
-    to right,
-    rgb(248 250 252) 4%,
-    rgb(241 245 249) 25%,
-    rgb(248 250 252) 36%
-  );
-  background-size: 1000px 100%;
-}
-
 /* ============================================================================
    FOCUS & ACCESSIBILITY
    ========================================================================== */
 :focus-visible {
-  outline: 2px solid rgb(59 130 246);
+  outline: 2px solid rgb(37 99 235);
   outline-offset: 2px;
   border-radius: 0.25rem;
 }
 
-/* Remove focus on click but keep for keyboard */
 *:focus:not(:focus-visible) {
   outline: none;
 }
 
 /* ============================================================================
-   PRINT STYLES
+   PRINT STYLES - OPTIMISÉ POUR L'IMPRESSION
    ========================================================================== */
 @media print {
+  @page {
+    size: A4;
+    margin: 1.5cm;
+  }
+
   * {
     @apply text-black bg-white;
+    box-shadow: none !important;
+    text-shadow: none !important;
   }
   
-  .no-print {
+  body {
+    @apply bg-white;
+  }
+
+  /* Cacher les éléments non nécessaires */
+  .no-print,
+  header,
+  button,
+  .btn,
+  nav,
+  .modal-backdrop {
     display: none !important;
+  }
+
+  /* Optimiser les cards pour l'impression */
+  .card {
+    @apply border border-primary-300 rounded-none;
+    page-break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+
+  .card-interactive {
+    @apply border-primary-400;
+  }
+
+  /* Grille responsive pour l'impression */
+  .print-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  /* Badges et tags lisibles */
+  .badge {
+    @apply border border-current;
+    background: white !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Titres */
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+
+  /* Liens */
+  a {
+    @apply text-black underline;
+  }
+
+  /* Forcer l'affichage des couleurs de statut */
+  .status-badge,
+  .badge-success,
+  .badge-warning,
+  .badge-danger {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Header d'impression personnalisé */
+  .print-header {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #000;
+  }
+
+  .print-header h1 {
+    font-size: 24pt;
+    margin-bottom: 0.5rem;
+  }
+
+  .print-header p {
+    font-size: 12pt;
+    color: #666;
+  }
+
+  /* Pagination */
+  .print-page-break {
+    page-break-before: always;
+  }
+
+  /* Footer d'impression */
+  .print-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 10pt;
+    color: #666;
   }
 }
 
 /* ============================================================================
-   DARK MODE PREPARATION (pour futur développement)
-   ========================================================================== */
-@media (prefers-color-scheme: dark) {
-  /* Préparé pour un mode sombre futur */
-  /* Actuellement désactivé pour cohérence */
-}
-
-/* ============================================================================
-   RESPONSIVE UTILITIES
+   RESPONSIVE
    ========================================================================== */
 @media (max-width: 640px) {
   .mobile-full {
     @apply w-full;
+  }
+
+  /* Adapter les boutons sur mobile */
+  .btn {
+    @apply text-xs px-3 py-2;
+  }
+
+  /* Stack les icônes verticalement sur mobile si nécessaire */
+  .mobile-stack {
+    @apply flex-col;
   }
 }
 
