@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   FaBuilding,
   FaPlus,
-  FaSearch,
   FaFilter,
   FaStar,
   FaRegStar,
@@ -11,9 +10,7 @@ import {
   FaEdit,
   FaTrash,
   FaComments,
-  FaUsers,
   FaSignOutAlt,
-  FaEye,
   FaEyeSlash,
   FaTimes,
   FaCalendar,
@@ -25,13 +22,13 @@ import {
   FaFileExport,
   FaFilePdf,
   FaFileExcel,
-  FaPrint
+  FaPrint,
+  FaEye
 } from 'react-icons/fa';
 
 import { 
   signInWithEmailAndPassword, 
-  signOut as firebaseSignOut,
-  createUserWithEmailAndPassword 
+  signOut as firebaseSignOut
 } from 'firebase/auth';
 import { 
   collection, 
@@ -44,36 +41,55 @@ import {
   query,
   onSnapshot,
   orderBy,
-  serverTimestamp,
-  setDoc
+  serverTimestamp
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
+
+// =============================================================================
+// COMPTES GÉNÉRIQUES
+// =============================================================================
+const GENERIC_ACCOUNTS = {
+  'administrateur': {
+    email: 'gffrcrsst@gmail.com',
+    password: 'sudoroot',
+    name: 'Admin',
+    role: 'admin'
+  },
+  'prof': {
+    email: 'prof@stages.local',
+    password: 'ecachav123',
+    name: 'Professeur',
+    role: 'teacher'
+  },
+  'eleve': {
+    email: 'eleve@stages.local',
+    password: 'eleve123',
+    name: 'Elève',
+    role: 'student'
+  }
+};
 
 // =============================================================================
 // FIREBASE SERVICE
 // =============================================================================
 const firebaseService = {
-  async signIn(email, password) {
+  async signIn(username, password) {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      return userCredential.user;
+      const account = GENERIC_ACCOUNTS[username.toLowerCase()];
+      if (!account || account.password !== password) {
+        throw new Error('Identifiant ou mot de passe incorrect');
+      }
+      
+      // Connexion avec l'email Firebase correspondant
+      await signInWithEmailAndPassword(auth, account.email, account.password);
+      return account;
     } catch (error) {
-      throw new Error('Email ou mot de passe incorrect');
+      throw new Error('Identifiant ou mot de passe incorrect');
     }
   },
   
   async signOut() {
     await firebaseSignOut(auth);
-  },
-  
-  getCurrentUser() {
-    return auth.currentUser;
-  },
-  
-  async getUserData(uid) {
-    const docRef = doc(db, 'users', uid);
-    const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
   },
   
   async getCompanies() {
@@ -143,26 +159,6 @@ const firebaseService = {
       ...comment,
       date: serverTimestamp()
     });
-  },
-  
-  async getUsers() {
-    const querySnapshot = await getDocs(collection(db, 'users'));
-    return querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-  },
-  
-  async addUser(userData) {
-    const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
-    await setDoc(doc(db, 'users', userCredential.user.uid), {
-      email: userData.email,
-      name: userData.name,
-      role: userData.role,
-      createdAt: serverTimestamp()
-    });
-    return { id: userCredential.user.uid, ...userData };
-  },
-  
-  async deleteUser(uid) {
-    await deleteDoc(doc(db, 'users', uid));
   },
   
   onSnapshot(callback) {
@@ -330,15 +326,17 @@ const printCompanies = (companies) => {
 // DONNÉES PRÉDÉFINIES
 // =============================================================================
 const PREDEFINED_TAGS = [
-  "Menuiserie",
-  "Pose",
-  "Charpente",
-  "Atelier",
-  "Agencement",
-  "Ébénisterie",
-  "Escaliers",
-  "Parquets",
-  "Fenêtres/Portes"
+  { name: "Menuiserie", color: "bg-blue-100 text-blue-800 border-blue-300" },
+  { name: "Pose", color: "bg-green-100 text-green-800 border-green-300" },
+  { name: "Charpente", color: "bg-amber-100 text-amber-800 border-amber-300" },
+  { name: "Atelier", color: "bg-purple-100 text-purple-800 border-purple-300" },
+  { name: "Agencement", color: "bg-pink-100 text-pink-800 border-pink-300" },
+  { name: "Ébénisterie", color: "bg-red-100 text-red-800 border-red-300" },
+  { name: "Escaliers", color: "bg-indigo-100 text-indigo-800 border-indigo-300" },
+  { name: "Parquets", color: "bg-orange-100 text-orange-800 border-orange-300" },
+  { name: "Fenêtres/Portes", color: "bg-teal-100 text-teal-800 border-teal-300" },
+  { name: "CAP", color: "bg-cyan-100 text-cyan-800 border-cyan-300" },
+  { name: "Bac Pro", color: "bg-violet-100 text-violet-800 border-violet-300" }
 ];
 
 const STATUS_OPTIONS = [
@@ -443,20 +441,13 @@ const Button = ({ children, variant = 'primary', icon: Icon, onClick, disabled, 
   );
 };
 
-const Input = ({ label, icon: Icon, error, className = '', ...props }) => (
+const Input = ({ label, error, className = '', ...props }) => (
   <div className="form-group">
     {label && <label className="form-label">{label}</label>}
-    <div className="relative">
-      {Icon && (
-        <div className="input-icon-left">
-          <Icon size={16} />
-        </div>
-      )}
-      <input
-        className={`${Icon ? 'pl-10' : ''} ${error ? 'border-danger-500 focus:ring-danger-500' : ''} ${className}`}
-        {...props}
-      />
-    </div>
+    <input
+      className={`${error ? 'border-danger-500 focus:ring-danger-500' : ''} ${className}`}
+      {...props}
+    />
     {error && <p className="mt-1 text-xs text-danger-600">{error}</p>}
   </div>
 );
@@ -530,29 +521,34 @@ const StarRating = ({ rating, onRate, readonly = false }) => {
   );
 };
 
-const TagSelector = ({ selectedTags, onToggle, readonly = false }) => (
-  <div className="flex flex-wrap gap-2">
-    {PREDEFINED_TAGS.map(tag => {
-      const isSelected = selectedTags.includes(tag);
-      return (
-        <button
-          key={tag}
-          type="button"
-          onClick={() => !readonly && onToggle(tag)}
-          disabled={readonly}
-          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-            isSelected
-              ? 'bg-accent-600 text-white shadow-sm border-2 border-accent-600'
-              : 'bg-primary-100 text-primary-800 hover:bg-primary-200 border-2 border-primary-200'
-          } ${readonly ? 'cursor-default' : 'cursor-pointer'}`}
-        >
-          <FaTag size={12} />
-          {tag}
-        </button>
-      );
-    })}
-  </div>
-);
+const TagSelector = ({ selectedTags, onToggle, readonly = false }) => {
+  const getTagColor = (tagName) => {
+    const tag = PREDEFINED_TAGS.find(t => t.name === tagName);
+    return tag ? tag.color : 'bg-gray-100 text-gray-800 border-gray-300';
+  };
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {PREDEFINED_TAGS.map(tag => {
+        const isSelected = selectedTags.includes(tag.name);
+        return (
+          <button
+            key={tag.name}
+            type="button"
+            onClick={() => !readonly && onToggle(tag.name)}
+            disabled={readonly}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border-2 ${
+              isSelected ? tag.color : 'bg-primary-100 text-primary-800 border-primary-200 hover:bg-primary-200'
+            } ${readonly ? 'cursor-default' : 'cursor-pointer'}`}
+          >
+            <FaTag size={12} />
+            {tag.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
 
 const StatusBadge = ({ status }) => {
   const statusConfig = STATUS_OPTIONS.find(s => s.value === status);
@@ -567,10 +563,10 @@ const StatusBadge = ({ status }) => {
 };
 
 // =============================================================================
-// PAGE DE CONNEXION
+// PAGE DE CONNEXION SIMPLIFIÉE
 // =============================================================================
 const LoginPage = ({ onLogin }) => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -582,13 +578,7 @@ const LoginPage = ({ onLogin }) => {
     setLoading(true);
 
     try {
-      const user = await firebase.signIn(email, password);
-      const userData = await firebase.getUserData(user.uid);
-      
-      if (!userData) {
-        throw new Error('Utilisateur non trouvé dans la base de données');
-      }
-      
+      const userData = await firebase.signIn(username, password);
       onLogin(userData);
     } catch (err) {
       setError(err.message);
@@ -611,14 +601,13 @@ const LoginPage = ({ onLogin }) => {
         <div className="card p-8 animate-slideUp" style={{ animationDelay: '0.1s' }}>
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input
-              label="Adresse email"
-              type="email"
-              icon={FaEnvelope}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="votre.email@lycee.fr"
+              label="Nom du compte"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="administrateur, prof ou eleve"
               required
-              autoComplete="email"
+              autoComplete="username"
             />
 
             <div className="form-group">
@@ -653,117 +642,16 @@ const LoginPage = ({ onLogin }) => {
             <Button type="submit" className="w-full justify-center" disabled={loading} size="lg">
               {loading ? 'Connexion en cours...' : 'Se connecter'}
             </Button>
+
+            <div className="pt-4 border-t border-primary-200">
+              <p className="text-xs text-primary-500 text-center">
+                Comptes disponibles : <strong>administrateur</strong>, <strong>prof</strong>, <strong>eleve</strong>
+              </p>
+            </div>
           </form>
         </div>
       </div>
     </div>
-  );
-};
-
-// =============================================================================
-// GESTION DES UTILISATEURS
-// =============================================================================
-const UserManagement = ({ currentUser, onClose }) => {
-  const [users, setUsers] = useState([]);
-  const [showAddUser, setShowAddUser] = useState(false);
-  const [newUser, setNewUser] = useState({
-    email: '',
-    password: '',
-    name: '',
-    role: 'teacher'
-  });
-
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  const loadUsers = async () => {
-    const data = await firebase.getUsers();
-    setUsers(data);
-  };
-
-  const handleAddUser = async (e) => {
-    e.preventDefault();
-    await firebase.addUser(newUser);
-    setNewUser({ email: '', password: '', name: '', role: 'teacher' });
-    setShowAddUser(false);
-    loadUsers();
-  };
-
-  const handleDeleteUser = async (uid) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {
-      await firebase.deleteUser(uid);
-      loadUsers();
-    }
-  };
-
-  return (
-    <Modal isOpen={true} onClose={onClose} title="Gestion des Utilisateurs">
-      <div className="mb-6">
-        <Button icon={FaPlus} onClick={() => setShowAddUser(!showAddUser)}>
-          Ajouter un utilisateur
-        </Button>
-      </div>
-
-      {showAddUser && (
-        <form onSubmit={handleAddUser} className="mb-6 p-4 bg-primary-50 rounded-lg border border-primary-200">
-          <h3 className="font-bold text-lg mb-4 text-primary-900">Nouvel Utilisateur</h3>
-          <Input
-            label="Nom complet"
-            value={newUser.name}
-            onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-            required
-          />
-          <Input
-            label="Email"
-            type="email"
-            value={newUser.email}
-            onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-            required
-          />
-          <Input
-            label="Mot de passe"
-            type="password"
-            value={newUser.password}
-            onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-            required
-          />
-          <Select
-            label="Rôle"
-            value={newUser.role}
-            onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-            options={[
-              { value: 'teacher', label: '👨‍🏫 Professeur' },
-              { value: 'student', label: '👨‍🎓 Élève' }
-            ]}
-          />
-          <Button type="submit" icon={FaCheck}>Créer l'utilisateur</Button>
-        </form>
-      )}
-
-      <div className="space-y-3">
-        {users.map(user => (
-          <div key={user.id} className="flex items-center justify-between p-4 bg-primary-50 rounded-lg border-2 border-primary-200">
-            <div className="flex-1">
-              <p className="font-semibold text-primary-900">{user.name}</p>
-              <p className="text-sm text-primary-600">{user.email}</p>
-              <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-semibold border-2 ${
-                user.role === 'admin' ? 'bg-primary-900 text-white border-primary-900' :
-                user.role === 'teacher' ? 'bg-accent-100 text-accent-800 border-accent-300' :
-                'bg-success-100 text-success-800 border-success-300'
-              }`}>
-                {user.role === 'admin' ? '👨‍💼 Admin' : user.role === 'teacher' ? '👨‍🏫 Professeur' : '👨‍🎓 Élève'}
-              </span>
-            </div>
-            {user.id !== currentUser.id && (
-              <Button variant="danger" icon={FaTrash} size="sm" onClick={() => handleDeleteUser(user.id)}>
-                Supprimer
-              </Button>
-            )}
-          </div>
-        ))}
-      </div>
-    </Modal>
   );
 };
 
@@ -786,7 +674,7 @@ const CompanyForm = ({ company, onSave, onCancel, currentUser }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ ...formData, createdBy: currentUser.id });
+    onSave({ ...formData, createdBy: currentUser.role });
   };
 
   const toggleTag = (tag) => {
@@ -841,14 +729,12 @@ const CompanyForm = ({ company, onSave, onCancel, currentUser }) => {
         <Input
           label="Téléphone"
           type="tel"
-          icon={FaPhone}
           value={formData.phone}
           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
         />
         <Input
           label="Email"
           type="email"
-          icon={FaEnvelope}
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
         />
@@ -898,12 +784,16 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
     await firebase.addComment(company.id, {
       comment,
       rating: commentRating,
-      authorId: currentUser.id,
       authorName: currentUser.name
     });
     setComment('');
     setCommentRating(3);
     setShowCommentForm(false);
+  };
+
+  const getTagColor = (tagName) => {
+    const tag = PREDEFINED_TAGS.find(t => t.name === tagName);
+    return tag ? tag.color : 'bg-gray-100 text-gray-800 border-gray-300';
   };
 
   return (
@@ -953,7 +843,14 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
 
         <div>
           <p className="text-xs text-primary-500 mb-2 uppercase font-semibold tracking-wide">Activités</p>
-          <TagSelector selectedTags={company.tags} readonly />
+          <div className="flex flex-wrap gap-2">
+            {company.tags.map(tag => (
+              <span key={tag} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border-2 ${getTagColor(tag)}`}>
+                <FaTag size={12} />
+                {tag}
+              </span>
+            ))}
+          </div>
         </div>
 
         <div>
@@ -1029,6 +926,11 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
 // CARTE ENTREPRISE
 // =============================================================================
 const CompanyCard = ({ company, onClick }) => {
+  const getTagColor = (tagName) => {
+    const tag = PREDEFINED_TAGS.find(t => t.name === tagName);
+    return tag ? tag.color : 'bg-gray-100 text-gray-800 border-gray-300';
+  };
+
   return (
     <div onClick={onClick} className="card card-interactive p-6">
       <div className="flex items-start justify-between mb-3">
@@ -1053,7 +955,7 @@ const CompanyCard = ({ company, onClick }) => {
 
       <div className="flex flex-wrap gap-2 mb-4">
         {company.tags.slice(0, 3).map(tag => (
-          <span key={tag} className="px-2.5 py-1 bg-accent-50 text-accent-700 rounded text-xs font-semibold border border-accent-200">
+          <span key={tag} className={`px-2.5 py-1 rounded text-xs font-semibold border ${getTagColor(tag)}`}>
             {tag}
           </span>
         ))}
@@ -1082,7 +984,6 @@ export default function App() {
   const [postalCodeFilter, setPostalCodeFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [showUserManagement, setShowUserManagement] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [editingCompany, setEditingCompany] = useState(null);
 
@@ -1185,12 +1086,6 @@ export default function App() {
                 </div>
               </div>
 
-              {currentUser.role === 'admin' && (
-                <Button variant="secondary" icon={FaUsers} size="sm" onClick={() => setShowUserManagement(true)}>
-                  Utilisateurs
-                </Button>
-              )}
-
               <ExportMenu companies={companies} filteredCompanies={filteredCompanies} />
 
               <Button variant="ghost" icon={FaSignOutAlt} size="sm" onClick={() => setCurrentUser(null)}>
@@ -1204,16 +1099,13 @@ export default function App() {
       <main className="container mx-auto px-4 py-8">
         <div className="card p-4 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <div className="input-icon-left">
-                <FaSearch size={16} />
-              </div>
+            <div className="flex-1">
               <input
                 type="text"
                 placeholder="Rechercher une entreprise ou une ville..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10"
+                className="w-full"
               />
             </div>
 
@@ -1268,16 +1160,16 @@ export default function App() {
                   <div className="flex flex-wrap gap-2">
                     {PREDEFINED_TAGS.map(tag => (
                       <button
-                        key={tag}
-                        onClick={() => toggleTagFilter(tag)}
+                        key={tag.name}
+                        onClick={() => toggleTagFilter(tag.name)}
                         className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border-2 ${
-                          selectedTags.includes(tag)
-                            ? 'bg-accent-600 text-white border-accent-600'
-                            : 'bg-primary-100 text-primary-800 hover:bg-primary-200 border-primary-200'
+                          selectedTags.includes(tag.name)
+                            ? tag.color
+                            : 'bg-primary-100 text-primary-800 border-primary-200 hover:bg-primary-200'
                         }`}
                       >
                         <FaTag size={10} />
-                        {tag}
+                        {tag.name}
                       </button>
                     ))}
                   </div>
@@ -1356,13 +1248,6 @@ export default function App() {
           }}
           onDelete={handleDeleteCompany}
           currentUser={currentUser}
-        />
-      )}
-
-      {showUserManagement && (
-        <UserManagement
-          currentUser={currentUser}
-          onClose={() => setShowUserManagement(false)}
         />
       )}
     </div>
