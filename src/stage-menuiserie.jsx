@@ -1875,7 +1875,6 @@ export default function App() {
           currentUser={currentUser}
         />
       )}
-    </div>
 
       {showImportModal && (
         <ImportModal
