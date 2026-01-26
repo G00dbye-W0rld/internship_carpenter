@@ -41,7 +41,8 @@ import {
   query,
   onSnapshot,
   orderBy,
-  serverTimestamp
+  serverTimestamp,
+  Timestamp
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
@@ -50,21 +51,21 @@ import { auth, db } from './firebase';
 // =============================================================================
 const GENERIC_ACCOUNTS = {
   'administrateur': {
-    email: 'gffrcrsst@gmail.com',
-    password: 'sudoroot',
-    name: 'Admin',
+    email: 'admin@stages.local',
+    password: 'admin123',
+    name: 'Administrateur',
     role: 'admin'
   },
   'prof': {
     email: 'prof@stages.local',
-    password: 'ecachav123',
+    password: 'prof123',
     name: 'Professeur',
     role: 'teacher'
   },
   'eleve': {
     email: 'eleve@stages.local',
     password: 'eleve123',
-    name: 'Elève',
+    name: 'Élève',
     role: 'student'
   }
 };
@@ -80,7 +81,6 @@ const firebaseService = {
         throw new Error('Identifiant ou mot de passe incorrect');
       }
       
-      // Connexion avec l'email Firebase correspondant
       await signInWithEmailAndPassword(auth, account.email, account.password);
       return account;
     } catch (error) {
@@ -92,6 +92,13 @@ const firebaseService = {
     await firebaseSignOut(auth);
   },
   
+  // Calculer la moyenne des notes des commentaires
+  calculateAverageRating(history) {
+    if (!history || history.length === 0) return 0;
+    const sum = history.reduce((acc, item) => acc + (item.rating || 0), 0);
+    return Math.round(sum / history.length);
+  },
+  
   async getCompanies() {
     try {
       const q = query(collection(db, 'companies'), orderBy('createdAt', 'desc'));
@@ -99,26 +106,35 @@ const firebaseService = {
       const companies = [];
       
       for (const docSnapshot of querySnapshot.docs) {
-        const company = {
-          id: docSnapshot.id,
-          ...docSnapshot.data(),
-          createdAt: docSnapshot.data().createdAt?.toDate(),
-          updatedAt: docSnapshot.data().updatedAt?.toDate(),
-          history: []
-        };
+        const companyData = docSnapshot.data();
+        const history = [];
         
         try {
           const historySnapshot = await getDocs(
             query(collection(db, `companies/${docSnapshot.id}/history`), orderBy('date', 'desc'))
           );
-          company.history = historySnapshot.docs.map(h => ({
-            id: h.id,
-            ...h.data(),
-            date: h.data().date?.toDate()
-          }));
+          historySnapshot.docs.forEach(h => {
+            const historyData = h.data();
+            history.push({
+              id: h.id,
+              ...historyData,
+              date: historyData.date?.toDate ? historyData.date.toDate() : new Date(historyData.date)
+            });
+          });
         } catch (e) {
-          console.log('No history for company', company.id);
+          console.log('No history for company', docSnapshot.id);
         }
+        
+        const averageRating = this.calculateAverageRating(history);
+        
+        const company = {
+          id: docSnapshot.id,
+          ...companyData,
+          rating: averageRating,
+          createdAt: companyData.createdAt?.toDate ? companyData.createdAt.toDate() : new Date(),
+          updatedAt: companyData.updatedAt?.toDate ? companyData.updatedAt.toDate() : new Date(),
+          history
+        };
         
         companies.push(company);
       }
@@ -136,7 +152,7 @@ const firebaseService = {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
-    return { id: docRef.id, ...data };
+    return { id: docRef.id, ...data, rating: 0 };
   },
   
   async updateCompany(id, data) {
@@ -155,10 +171,15 @@ const firebaseService = {
   },
   
   async addComment(companyId, comment) {
-    await addDoc(collection(db, `companies/${companyId}/history`), {
+    const commentData = {
       ...comment,
       date: serverTimestamp()
-    });
+    };
+    await addDoc(collection(db, `companies/${companyId}/history`), commentData);
+  },
+  
+  async deleteComment(companyId, commentId) {
+    await deleteDoc(doc(db, `companies/${companyId}/history`, commentId));
   },
   
   onSnapshot(callback) {
@@ -166,12 +187,34 @@ const firebaseService = {
     return onSnapshot(q, async (snap) => {
       const companies = [];
       for (const docSnap of snap.docs) {
+        const companyData = docSnap.data();
+        const history = [];
+        
+        try {
+          const historySnapshot = await getDocs(
+            query(collection(db, `companies/${docSnap.id}/history`), orderBy('date', 'desc'))
+          );
+          historySnapshot.docs.forEach(h => {
+            const historyData = h.data();
+            history.push({
+              id: h.id,
+              ...historyData,
+              date: historyData.date?.toDate ? historyData.date.toDate() : new Date(historyData.date)
+            });
+          });
+        } catch (e) {
+          console.log('No history for company', docSnap.id);
+        }
+        
+        const averageRating = this.calculateAverageRating(history);
+        
         const company = {
           id: docSnap.id,
-          ...docSnap.data(),
-          createdAt: docSnap.data().createdAt?.toDate(),
-          updatedAt: docSnap.data().updatedAt?.toDate(),
-          history: []
+          ...companyData,
+          rating: averageRating,
+          createdAt: companyData.createdAt?.toDate ? companyData.createdAt.toDate() : new Date(),
+          updatedAt: companyData.updatedAt?.toDate ? companyData.updatedAt.toDate() : new Date(),
+          history
         };
         companies.push(company);
       }
@@ -656,7 +699,7 @@ const LoginPage = ({ onLogin }) => {
 };
 
 // =============================================================================
-// FORMULAIRE ENTREPRISE
+// FORMULAIRE ENTREPRISE (SANS NOTE - CALCULÉE AUTOMATIQUEMENT)
 // =============================================================================
 const CompanyForm = ({ company, onSave, onCancel, currentUser }) => {
   const [formData, setFormData] = useState(company || {
@@ -668,8 +711,7 @@ const CompanyForm = ({ company, onSave, onCancel, currentUser }) => {
     email: '',
     contactName: '',
     tags: [],
-    status: 'active',
-    rating: 0
+    status: 'active'
   });
 
   const handleSubmit = (e) => {
@@ -752,9 +794,9 @@ const CompanyForm = ({ company, onSave, onCancel, currentUser }) => {
         options={STATUS_OPTIONS}
       />
 
-      <div className="mb-4">
-        <label className="form-label">Évaluation</label>
-        <StarRating rating={formData.rating} onRate={(rating) => setFormData({ ...formData, rating })} />
+      <div className="p-3 bg-accent-50 border-2 border-accent-200 rounded-lg text-accent-700 text-sm mb-4">
+        <p className="font-semibold mb-1">ℹ️ Note de l'entreprise</p>
+        <p>La note est calculée automatiquement en fonction de la moyenne des avis.</p>
       </div>
 
       <div className="flex gap-3 pt-4">
@@ -770,25 +812,60 @@ const CompanyForm = ({ company, onSave, onCancel, currentUser }) => {
 };
 
 // =============================================================================
-// DÉTAIL ENTREPRISE
+// DÉTAIL ENTREPRISE AVEC COMMENTAIRES
 // =============================================================================
-const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
+const CompanyDetail = ({ company, onClose, onEdit, onDelete, onRefresh, currentUser }) => {
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [comment, setComment] = useState('');
   const [commentRating, setCommentRating] = useState(3);
+  const [submitting, setSubmitting] = useState(false);
 
   const canEdit = currentUser.role === 'teacher' || currentUser.role === 'admin';
+  const canComment = true; // Tous peuvent commenter (élèves inclus)
 
   const handleAddComment = async (e) => {
     e.preventDefault();
-    await firebase.addComment(company.id, {
-      comment,
-      rating: commentRating,
-      authorName: currentUser.name
-    });
-    setComment('');
-    setCommentRating(3);
-    setShowCommentForm(false);
+    if (!comment.trim()) return;
+    
+    setSubmitting(true);
+    try {
+      await firebase.addComment(company.id, {
+        comment: comment.trim(),
+        rating: commentRating,
+        authorName: currentUser.name,
+        authorRole: currentUser.role
+      });
+      
+      setComment('');
+      setCommentRating(3);
+      setShowCommentForm(false);
+      
+      // Rafraîchir les données
+      if (onRefresh) {
+        await onRefresh();
+      }
+    } catch (error) {
+      console.error('Erreur ajout commentaire:', error);
+      alert('Erreur lors de l\'ajout du commentaire');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce commentaire ?')) return;
+    
+    try {
+      await firebase.deleteComment(company.id, commentId);
+      
+      // Rafraîchir les données
+      if (onRefresh) {
+        await onRefresh();
+      }
+    } catch (error) {
+      console.error('Erreur suppression commentaire:', error);
+      alert('Erreur lors de la suppression du commentaire');
+    }
   };
 
   const getTagColor = (tagName) => {
@@ -796,12 +873,35 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
     return tag ? tag.color : 'bg-gray-100 text-gray-800 border-gray-300';
   };
 
+  const formatDate = (date) => {
+    if (!date) return 'Date inconnue';
+    try {
+      return new Date(date).toLocaleDateString('fr-FR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return 'Date invalide';
+    }
+  };
+
   return (
     <Modal isOpen={true} onClose={onClose} title={company.name}>
       <div className="space-y-6">
         <div className="flex items-center justify-between pb-4 divider">
           <StatusBadge status={company.status} />
-          <StarRating rating={company.rating} readonly />
+          <div className="text-right">
+            <StarRating rating={company.rating} readonly />
+            <p className="text-xs text-primary-500 mt-1">
+              {company.history?.length > 0 
+                ? `Moyenne de ${company.history.length} avis`
+                : 'Aucun avis'
+              }
+            </p>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
@@ -857,16 +957,16 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-bold flex items-center gap-2 text-primary-900">
               <FaComments size={18} />
-              Historique ({company.history?.length || 0})
+              Avis & Commentaires ({company.history?.length || 0})
             </h3>
-            {canEdit && (
+            {canComment && (
               <Button
                 variant="secondary"
                 icon={FaPlus}
                 size="sm"
                 onClick={() => setShowCommentForm(!showCommentForm)}
               >
-                Ajouter
+                Ajouter un avis
               </Button>
             )}
           </div>
@@ -874,38 +974,69 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, currentUser }) => {
           {showCommentForm && (
             <form onSubmit={handleAddComment} className="mb-4 p-4 bg-primary-50 rounded-lg border-2 border-primary-200">
               <Textarea
-                label="Commentaire"
+                label="Votre commentaire"
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="Expérience avec cette entreprise..."
+                placeholder="Partagez votre expérience avec cette entreprise..."
                 required
               />
               <div className="mb-4">
-                <label className="form-label">Note</label>
+                <label className="form-label">Votre note</label>
                 <StarRating rating={commentRating} onRate={setCommentRating} />
               </div>
               <div className="flex gap-2">
-                <Button type="submit" icon={FaCheck} size="sm">Publier</Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setShowCommentForm(false)}>Annuler</Button>
+                <Button type="submit" icon={FaCheck} size="sm" disabled={submitting}>
+                  {submitting ? 'Publication...' : 'Publier'}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => {
+                    setShowCommentForm(false);
+                    setComment('');
+                    setCommentRating(3);
+                  }}
+                  disabled={submitting}
+                >
+                  Annuler
+                </Button>
               </div>
             </form>
           )}
 
           <div className="space-y-3 max-h-96 overflow-y-auto">
-            {company.history?.length === 0 && (
-              <p className="text-primary-500 text-sm text-center py-4">Aucun commentaire</p>
+            {(!company.history || company.history.length === 0) && (
+              <p className="text-primary-500 text-sm text-center py-4">Aucun avis pour le moment</p>
             )}
             {company.history?.map(item => (
               <div key={item.id} className="p-4 bg-primary-50 rounded-lg border-2 border-primary-200">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-sm text-primary-900">{item.authorName}</span>
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <span className="font-semibold text-sm text-primary-900">{item.authorName}</span>
+                    <span className="text-xs text-primary-500 ml-2">
+                      ({item.authorRole === 'admin' ? 'Admin' : 
+                        item.authorRole === 'teacher' ? 'Professeur' : 'Élève'})
+                    </span>
+                  </div>
+                  {canEdit && (
+                    <button
+                      onClick={() => handleDeleteComment(item.id)}
+                      className="text-danger-600 hover:text-danger-700 p-1 hover:bg-danger-50 rounded transition-colors"
+                      title="Supprimer le commentaire"
+                    >
+                      <FaTrash size={14} />
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <StarRating rating={item.rating || 0} readonly />
                   <span className="text-xs text-primary-500 flex items-center gap-1">
-                    <FaCalendar size={12} />
-                    {new Date(item.date).toLocaleDateString('fr-FR')}
+                    <FaCalendar size={10} />
+                    {formatDate(item.date)}
                   </span>
                 </div>
-                <StarRating rating={item.rating} readonly />
-                <p className="text-sm text-primary-700 mt-2">{item.comment}</p>
+                <p className="text-sm text-primary-700">{item.comment}</p>
               </div>
             ))}
           </div>
@@ -937,7 +1068,14 @@ const CompanyCard = ({ company, onClick }) => {
         <h3 className="text-lg font-bold text-primary-900 group-hover:text-accent-600 transition-colors">
           {company.name}
         </h3>
-        <StarRating rating={company.rating} readonly />
+        <div className="text-right">
+          <StarRating rating={company.rating} readonly />
+          {company.history?.length > 0 && (
+            <p className="text-xs text-primary-500 mt-1">
+              {company.history.length} avis
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2 mb-4">
@@ -1025,6 +1163,19 @@ export default function App() {
     setFilteredCompanies(filtered);
   }, [companies, searchTerm, selectedTags, selectedStatus, postalCodeFilter]);
 
+  const refreshCompanies = async () => {
+    const data = await firebase.getCompanies();
+    setCompanies(data);
+    
+    // Mettre à jour la société sélectionnée si elle est ouverte
+    if (selectedCompany) {
+      const updated = data.find(c => c.id === selectedCompany.id);
+      if (updated) {
+        setSelectedCompany(updated);
+      }
+    }
+  };
+
   const handleSaveCompany = async (companyData) => {
     if (editingCompany) {
       await firebase.updateCompany(editingCompany.id, companyData);
@@ -1033,12 +1184,14 @@ export default function App() {
       await firebase.addCompany(companyData);
       setShowAddForm(false);
     }
+    await refreshCompanies();
   };
 
   const handleDeleteCompany = async () => {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette entreprise ?')) {
       await firebase.deleteCompany(selectedCompany.id);
       setSelectedCompany(null);
+      await refreshCompanies();
     }
   };
 
@@ -1247,6 +1400,7 @@ export default function App() {
             setSelectedCompany(null);
           }}
           onDelete={handleDeleteCompany}
+          onRefresh={refreshCompanies}
           currentUser={currentUser}
         />
       )}
