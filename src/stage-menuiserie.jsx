@@ -53,7 +53,7 @@ const GENERIC_ACCOUNTS = {
   'prof': {
     email: 'prof@stages.local',
     password: 'ecachav123',
-    name: 'Professeur',
+    name: 'Prof ECA',
     role: 'teacher'
   },
   'eleve': {
