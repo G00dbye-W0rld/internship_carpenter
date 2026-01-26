@@ -124,7 +124,7 @@ const ParticleBackground = () => {
         height: '100%',
         zIndex: 0,
         pointerEvents: 'none',
-        opacity: 0.5 // Opacité générale très légère
+        opacity: 0.8 // Opacité générale très légère
       }}
     />
   );
@@ -1359,7 +1359,7 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, onRefresh, currentU
   const [submitting, setSubmitting] = useState(false);
 
   const canEdit = currentUser.role === 'teacher';
-  const canComment = true;
+  const canComment = currentUser.role === 'teacher';
 
   const handleAddComment = async (e) => {
     e.preventDefault();
