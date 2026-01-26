@@ -55,7 +55,7 @@ import { auth, db } from './firebase';
 const GENERIC_ACCOUNTS = {
   'prof': {
     email: 'prof@stages.local',
-    password: 'ecachav123',
+    password: 'prof123',
     name: 'Professeur',
     role: 'teacher'
   },
@@ -339,7 +339,7 @@ const parseEcoleDirectFile = async (file) => {
         
         const companies = jsonData.map((row, index) => {
           const postalCode = extractPostalCode(row['Adresse']);
-          const sectorTags = mapSectorToTags(row['Secteur d\'Activité'] || row['Secteur d'Activité']);
+          const sectorTags = mapSectorToTags(row["Secteur d'Activité"]);
           const levelTags = mapLevelsToTags(row['Niveaux']);
           const allTags = [...new Set([...sectorTags, ...levelTags])];
           
@@ -356,7 +356,7 @@ const parseEcoleDirectFile = async (file) => {
             status: 'active',
             evaluation: parseFloat(row['Evaluation /5']) || 0,
             students: row['Élèves'] || row['Elèves'] || '',
-            sector: row['Secteur d\'Activité'] || row['Secteur d'Activité'] || '',
+            sector: row["Secteur d'Activité"] || '',
             levels: row['Niveaux'] || '',
             isValid: !!(row['Nom'] && row['Ville']),
             needsPostalCode: !postalCode
