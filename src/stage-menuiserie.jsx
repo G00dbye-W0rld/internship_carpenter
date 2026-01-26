@@ -50,6 +50,87 @@ import {
 import { auth, db } from './firebase';
 
 // =============================================================================
+// COMPOSANT ANIMATION PARTICULES
+// =============================================================================
+const ParticleBackground = () => {
+  const canvasRef = React.useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const particles = [];
+    const particleCount = 50; // Nombre de particules (sobre)
+
+    // Créer les particules
+    for (let i = 0; i < particleCount; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        radius: Math.random() * 2 + 1,
+        speedX: (Math.random() - 0.5) * 0.5,
+        speedY: (Math.random() - 0.5) * 0.5,
+        opacity: Math.random() * 0.3 + 0.1 // Très léger
+      });
+    }
+
+    // Animation
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach(particle => {
+        // Dessiner particule
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(59, 130, 246, ${particle.opacity})`; // Bleu primary
+        ctx.fill();
+
+        // Déplacer
+        particle.x += particle.speedX;
+        particle.y += particle.speedY;
+
+        // Rebond sur les bords
+        if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -1;
+        if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -1;
+      });
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    // Redimensionnement
+    const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 0,
+        pointerEvents: 'none',
+        opacity: 0.3 // Opacité générale très légère
+      }}
+    />
+  );
+};
+
+// =============================================================================
 // 2 COMPTES GÉNÉRIQUES SEULEMENT
 // =============================================================================
 const GENERIC_ACCOUNTS = {
@@ -1669,8 +1750,10 @@ export default function App() {
     return <LoginPage onLogin={setCurrentUser} />;
   }
 
-  return (
-    <div className="min-h-screen bg-primary-50">
+   return (
+    <>
+      <ParticleBackground />
+      <div className="min-h-screen bg-primary-50" style={{ position: 'relative', zIndex: 1 }}>
       <header className="sticky top-0 z-40 backdrop-professional border-b border-primary-300">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
@@ -1884,6 +1967,7 @@ export default function App() {
           currentUser={currentUser}
         />
       )}
-    </div>
+      </div>
+    </>
   );
 }
