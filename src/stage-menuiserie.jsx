@@ -47,15 +47,9 @@ import {
 import { auth, db } from './firebase';
 
 // =============================================================================
-// COMPTES GÉNÉRIQUES
+// 2 COMPTES GÉNÉRIQUES SEULEMENT
 // =============================================================================
 const GENERIC_ACCOUNTS = {
-  'administrateur': {
-    email: 'admin@stages.local',
-    password: 'sudoroot',
-    name: 'Administrateur',
-    role: 'admin'
-  },
   'prof': {
     email: 'prof@stages.local',
     password: 'ecachav123',
@@ -84,6 +78,7 @@ const firebaseService = {
       await signInWithEmailAndPassword(auth, account.email, account.password);
       return account;
     } catch (error) {
+      console.error('Erreur connexion:', error);
       throw new Error('Identifiant ou mot de passe incorrect');
     }
   },
@@ -92,7 +87,6 @@ const firebaseService = {
     await firebaseSignOut(auth);
   },
   
-  // Calculer la moyenne des notes des commentaires
   calculateAverageRating(history) {
     if (!history || history.length === 0) return 0;
     const sum = history.reduce((acc, item) => acc + (item.rating || 0), 0);
@@ -141,45 +135,70 @@ const firebaseService = {
       
       return companies;
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error getCompanies:', error);
       return [];
     }
   },
   
   async addCompany(data) {
-    const docRef = await addDoc(collection(db, 'companies'), {
-      ...data,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-    return { id: docRef.id, ...data, rating: 0 };
+    try {
+      const docRef = await addDoc(collection(db, 'companies'), {
+        ...data,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      return { id: docRef.id, ...data, rating: 0 };
+    } catch (error) {
+      console.error('Error addCompany:', error);
+      throw error;
+    }
   },
   
   async updateCompany(id, data) {
-    await updateDoc(doc(db, 'companies', id), {
-      ...data,
-      updatedAt: serverTimestamp()
-    });
+    try {
+      await updateDoc(doc(db, 'companies', id), {
+        ...data,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error updateCompany:', error);
+      throw error;
+    }
   },
   
   async deleteCompany(id) {
-    const historySnapshot = await getDocs(collection(db, `companies/${id}/history`));
-    for (const historyDoc of historySnapshot.docs) {
-      await deleteDoc(doc(db, `companies/${id}/history`, historyDoc.id));
+    try {
+      const historySnapshot = await getDocs(collection(db, `companies/${id}/history`));
+      for (const historyDoc of historySnapshot.docs) {
+        await deleteDoc(doc(db, `companies/${id}/history`, historyDoc.id));
+      }
+      await deleteDoc(doc(db, 'companies', id));
+    } catch (error) {
+      console.error('Error deleteCompany:', error);
+      throw error;
     }
-    await deleteDoc(doc(db, 'companies', id));
   },
   
   async addComment(companyId, comment) {
-    const commentData = {
-      ...comment,
-      date: serverTimestamp()
-    };
-    await addDoc(collection(db, `companies/${companyId}/history`), commentData);
+    try {
+      const commentData = {
+        ...comment,
+        date: serverTimestamp()
+      };
+      await addDoc(collection(db, `companies/${companyId}/history`), commentData);
+    } catch (error) {
+      console.error('Error addComment:', error);
+      throw error;
+    }
   },
   
   async deleteComment(companyId, commentId) {
-    await deleteDoc(doc(db, `companies/${companyId}/history`, commentId));
+    try {
+      await deleteDoc(doc(db, `companies/${companyId}/history`, commentId));
+    } catch (error) {
+      console.error('Error deleteComment:', error);
+      throw error;
+    }
   },
   
   onSnapshot(callback) {
@@ -606,7 +625,7 @@ const StatusBadge = ({ status }) => {
 };
 
 // =============================================================================
-// PAGE DE CONNEXION SIMPLIFIÉE
+// PAGE DE CONNEXION
 // =============================================================================
 const LoginPage = ({ onLogin }) => {
   const [username, setUsername] = useState('');
@@ -648,7 +667,7 @@ const LoginPage = ({ onLogin }) => {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="administrateur, prof ou eleve"
+              placeholder="prof ou eleve"
               required
               autoComplete="username"
             />
@@ -688,7 +707,7 @@ const LoginPage = ({ onLogin }) => {
 
             <div className="pt-4 border-t border-primary-200">
               <p className="text-xs text-primary-500 text-center">
-                Comptes disponibles : <strong>administrateur</strong>, <strong>prof</strong>, <strong>eleve</strong>
+                Comptes disponibles : <strong>prof</strong>, <strong>eleve</strong>
               </p>
             </div>
           </form>
@@ -699,7 +718,7 @@ const LoginPage = ({ onLogin }) => {
 };
 
 // =============================================================================
-// FORMULAIRE ENTREPRISE (SANS NOTE - CALCULÉE AUTOMATIQUEMENT)
+// FORMULAIRE ENTREPRISE
 // =============================================================================
 const CompanyForm = ({ company, onSave, onCancel, currentUser }) => {
   const [formData, setFormData] = useState(company || {
@@ -812,7 +831,7 @@ const CompanyForm = ({ company, onSave, onCancel, currentUser }) => {
 };
 
 // =============================================================================
-// DÉTAIL ENTREPRISE AVEC COMMENTAIRES
+// DÉTAIL ENTREPRISE
 // =============================================================================
 const CompanyDetail = ({ company, onClose, onEdit, onDelete, onRefresh, currentUser }) => {
   const [showCommentForm, setShowCommentForm] = useState(false);
@@ -820,8 +839,8 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, onRefresh, currentU
   const [commentRating, setCommentRating] = useState(3);
   const [submitting, setSubmitting] = useState(false);
 
-  const canEdit = currentUser.role === 'teacher' || currentUser.role === 'admin';
-  const canComment = true; // Tous peuvent commenter (élèves inclus)
+  const canEdit = currentUser.role === 'teacher';
+  const canComment = true;
 
   const handleAddComment = async (e) => {
     e.preventDefault();
@@ -840,13 +859,12 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, onRefresh, currentU
       setCommentRating(3);
       setShowCommentForm(false);
       
-      // Rafraîchir les données
       if (onRefresh) {
         await onRefresh();
       }
     } catch (error) {
       console.error('Erreur ajout commentaire:', error);
-      alert('Erreur lors de l\'ajout du commentaire');
+      alert(`Erreur lors de l'ajout du commentaire: ${error.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -858,13 +876,12 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, onRefresh, currentU
     try {
       await firebase.deleteComment(company.id, commentId);
       
-      // Rafraîchir les données
       if (onRefresh) {
         await onRefresh();
       }
     } catch (error) {
       console.error('Erreur suppression commentaire:', error);
-      alert('Erreur lors de la suppression du commentaire');
+      alert(`Erreur lors de la suppression: ${error.message}`);
     }
   };
 
@@ -1015,8 +1032,7 @@ const CompanyDetail = ({ company, onClose, onEdit, onDelete, onRefresh, currentU
                   <div>
                     <span className="font-semibold text-sm text-primary-900">{item.authorName}</span>
                     <span className="text-xs text-primary-500 ml-2">
-                      ({item.authorRole === 'admin' ? 'Admin' : 
-                        item.authorRole === 'teacher' ? 'Professeur' : 'Élève'})
+                      ({item.authorRole === 'teacher' ? 'Professeur' : 'Élève'})
                     </span>
                   </div>
                   {canEdit && (
@@ -1167,7 +1183,6 @@ export default function App() {
     const data = await firebase.getCompanies();
     setCompanies(data);
     
-    // Mettre à jour la société sélectionnée si elle est ouverte
     if (selectedCompany) {
       const updated = data.find(c => c.id === selectedCompany.id);
       if (updated) {
@@ -1177,21 +1192,29 @@ export default function App() {
   };
 
   const handleSaveCompany = async (companyData) => {
-    if (editingCompany) {
-      await firebase.updateCompany(editingCompany.id, companyData);
-      setEditingCompany(null);
-    } else {
-      await firebase.addCompany(companyData);
-      setShowAddForm(false);
+    try {
+      if (editingCompany) {
+        await firebase.updateCompany(editingCompany.id, companyData);
+        setEditingCompany(null);
+      } else {
+        await firebase.addCompany(companyData);
+        setShowAddForm(false);
+      }
+      await refreshCompanies();
+    } catch (error) {
+      alert(`Erreur: ${error.message}`);
     }
-    await refreshCompanies();
   };
 
   const handleDeleteCompany = async () => {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette entreprise ?')) {
-      await firebase.deleteCompany(selectedCompany.id);
-      setSelectedCompany(null);
-      await refreshCompanies();
+      try {
+        await firebase.deleteCompany(selectedCompany.id);
+        setSelectedCompany(null);
+        await refreshCompanies();
+      } catch (error) {
+        alert(`Erreur: ${error.message}`);
+      }
     }
   };
 
@@ -1201,7 +1224,7 @@ export default function App() {
     );
   };
 
-  const canEdit = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
+  const canEdit = currentUser?.role === 'teacher';
 
   if (!currentUser) {
     return <LoginPage onLogin={setCurrentUser} />;
@@ -1230,11 +1253,10 @@ export default function App() {
                 <div className="text-right">
                   <p className="text-sm font-semibold text-primary-900 leading-none">{currentUser.name}</p>
                   <span className={`text-xs mt-0.5 inline-block px-2 py-0.5 rounded font-semibold border ${
-                    currentUser.role === 'admin' ? 'bg-primary-900 text-white border-primary-900' :
                     currentUser.role === 'teacher' ? 'bg-accent-100 text-accent-800 border-accent-300' :
                     'bg-success-100 text-success-800 border-success-300'
                   }`}>
-                    {currentUser.role === 'admin' ? 'Admin' : currentUser.role === 'teacher' ? 'Professeur' : 'Élève'}
+                    {currentUser.role === 'teacher' ? 'Professeur' : 'Élève'}
                   </span>
                 </div>
               </div>
