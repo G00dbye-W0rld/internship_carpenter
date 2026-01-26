@@ -64,7 +64,7 @@ const ParticleBackground = () => {
     canvas.height = window.innerHeight;
 
     const particles = [];
-    const particleCount = 50; // Nombre de particules (sobre)
+    const particleCount = 70; // Nombre de particules (sobre)
 
     // Créer les particules
     for (let i = 0; i < particleCount; i++) {
@@ -86,7 +86,7 @@ const ParticleBackground = () => {
         // Dessiner particule
         ctx.beginPath();
         ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(59, 130, 246, ${particle.opacity})`; // Bleu primary
+        ctx.fillStyle = `rgba(71, 85, 105, ${particle.opacity})`;
         ctx.fill();
 
         // Déplacer
@@ -124,7 +124,7 @@ const ParticleBackground = () => {
         height: '100%',
         zIndex: 0,
         pointerEvents: 'none',
-        opacity: 0.3 // Opacité générale très légère
+        opacity: 0.5 // Opacité générale très légère
       }}
     />
   );
