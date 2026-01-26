@@ -52,13 +52,13 @@ import { auth, db } from './firebase';
 const GENERIC_ACCOUNTS = {
   'administrateur': {
     email: 'admin@stages.local',
-    password: 'admin123',
+    password: 'sudoroot',
     name: 'Administrateur',
     role: 'admin'
   },
   'prof': {
     email: 'prof@stages.local',
-    password: 'prof123',
+    password: 'ecachav123',
     name: 'Professeur',
     role: 'teacher'
   },
