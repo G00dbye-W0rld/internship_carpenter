@@ -23,7 +23,10 @@ import {
   FaFilePdf,
   FaFileExcel,
   FaPrint,
-  FaEye
+  FaEye,
+  FaFileImport,
+  FaCheckCircle,
+  FaTimesCircle
 } from 'react-icons/fa';
 
 import { 
@@ -53,7 +56,7 @@ const GENERIC_ACCOUNTS = {
   'prof': {
     email: 'prof@stages.local',
     password: 'ecachav123',
-    name: 'Prof ECA',
+    name: 'Professeur',
     role: 'teacher'
   },
   'eleve': {
@@ -62,6 +65,30 @@ const GENERIC_ACCOUNTS = {
     name: 'Élève',
     role: 'student'
   }
+};
+
+
+// =============================================================================
+// MAPPING SECTEURS D'ACTIVITÉ ECOLEDIRECT
+// =============================================================================
+const SECTOR_MAPPING = {
+  'menuiserie': ['Menuiserie'],
+  'pose': ['Pose'],
+  'charpente': ['Charpente'],
+  'atelier': ['Atelier'],
+  'agencement': ['Agencement'],
+  'ébénisterie': ['Ébénisterie'],
+  'ebenisterie': ['Ébénisterie'],
+  'escalier': ['Escaliers'],
+  'escaliers': ['Escaliers'],
+  'parquet': ['Parquets'],
+  'parquets': ['Parquets'],
+  'fenêtre': ['Fenêtres/Portes'],
+  'fenetre': ['Fenêtres/Portes'],
+  'porte': ['Fenêtres/Portes'],
+  'portes': ['Fenêtres/Portes'],
+  'bois': ['Menuiserie'],
+  'construction bois': ['Charpente', 'Menuiserie']
 };
 
 // =============================================================================
@@ -245,6 +272,111 @@ const firebaseService = {
 const firebase = firebaseService;
 
 // =============================================================================
+// UTILITAIRES IMPORT ECOLEDIRECT
+// =============================================================================
+
+// Extraire le code postal de l'adresse
+const extractPostalCode = (address) => {
+  if (!address) return '';
+  const match = address.match(/\b(\d{5})\b/);
+  return match ? match[1] : '';
+};
+
+// Nettoyer l'adresse (enlever le code postal si présent)
+const cleanAddress = (address, postalCode) => {
+  if (!address) return '';
+  if (postalCode) {
+    return address.replace(postalCode, '').replace(/,\s*$/, '').trim();
+  }
+  return address;
+};
+
+// Mapper secteur d'activité vers tags
+const mapSectorToTags = (sector) => {
+  if (!sector) return [];
+  
+  const tags = new Set();
+  const sectorLower = sector.toLowerCase();
+  
+  Object.keys(SECTOR_MAPPING).forEach(key => {
+    if (sectorLower.includes(key)) {
+      SECTOR_MAPPING[key].forEach(tag => tags.add(tag));
+    }
+  });
+  
+  return tags.size > 0 ? Array.from(tags) : ['Menuiserie'];
+};
+
+// Mapper niveaux vers tags
+const mapLevelsToTags = (levels) => {
+  if (!levels) return [];
+  
+  const tags = [];
+  const levelsLower = levels.toLowerCase();
+  
+  if (levelsLower.includes('cap')) tags.push('CAP');
+  if (levelsLower.includes('bac') || levelsLower.includes('2nde') || 
+      levelsLower.includes('1ère') || levelsLower.includes('terminale')) {
+    tags.push('Bac Pro');
+  }
+  
+  return tags;
+};
+
+// Parser le fichier Excel EcoleDirecte
+const parseEcoleDirectFile = async (file) => {
+  const XLSX = await import('xlsx');
+  
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+        
+        const companies = jsonData.map((row, index) => {
+          const postalCode = extractPostalCode(row['Adresse']);
+          const sectorTags = mapSectorToTags(row['Secteur d\'Activité'] || row['Secteur d'Activité']);
+          const levelTags = mapLevelsToTags(row['Niveaux']);
+          const allTags = [...new Set([...sectorTags, ...levelTags])];
+          
+          return {
+            id: `import-${index}`,
+            name: row['Nom'] || '',
+            address: cleanAddress(row['Adresse'], postalCode),
+            postalCode: postalCode,
+            city: row['Ville'] || '',
+            phone: row['Téléphone'] || '',
+            email: row['Email'] || '',
+            contactName: '',
+            tags: allTags,
+            status: 'active',
+            evaluation: parseFloat(row['Evaluation /5']) || 0,
+            students: row['Élèves'] || row['Elèves'] || '',
+            sector: row['Secteur d\'Activité'] || row['Secteur d'Activité'] || '',
+            levels: row['Niveaux'] || '',
+            isValid: !!(row['Nom'] && row['Ville']),
+            needsPostalCode: !postalCode
+          };
+        });
+        
+        resolve(companies);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    
+    reader.onerror = () => reject(new Error('Erreur lecture fichier'));
+    reader.readAsArrayBuffer(file);
+  });
+};
+
+
+
+// =============================================================================
 // FONCTIONS D'EXPORT
 // =============================================================================
 
@@ -406,6 +538,312 @@ const STATUS_OPTIONS = [
   { value: 'inactive', label: 'N\'accepte plus', color: 'warning' },
   { value: 'not-recommended', label: 'Déconseillée', color: 'danger' }
 ];
+
+// =============================================================================
+// MODAL IMPORT ECOLEDIRECT
+// =============================================================================
+const ImportModal = ({ isOpen, onClose, onImport, currentUser }) => {
+  const [file, setFile] = useState(null);
+  const [companies, setCompanies] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importResult, setImportResult] = useState(null);
+  const [step, setStep] = useState(1); // 1: upload, 2: preview, 3: result
+
+  const handleFileSelect = async (e) => {
+    const selectedFile = e.target.files[0];
+    if (!selectedFile) return;
+
+    setFile(selectedFile);
+    setLoading(true);
+
+    try {
+      const parsed = await parseEcoleDirectFile(selectedFile);
+      setCompanies(parsed);
+      setStep(2);
+    } catch (error) {
+      console.error('Erreur parsing:', error);
+      alert('Erreur lors de la lecture du fichier. Vérifiez le format Excel avec les colonnes : Nom, Adresse, Ville, etc.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePostalCodeChange = (index, value) => {
+    const updated = [...companies];
+    updated[index].postalCode = value;
+    updated[index].needsPostalCode = !value;
+    setCompanies(updated);
+  };
+
+  const handleImport = async () => {
+    setImporting(true);
+    setImportProgress(0);
+
+    const results = {
+      total: companies.length,
+      success: 0,
+      errors: []
+    };
+
+    for (let i = 0; i < companies.length; i++) {
+      const company = companies[i];
+      
+      try {
+        if (!company.name || !company.city) {
+          results.errors.push({ company: company.name || 'Inconnu', error: 'Nom ou ville manquant' });
+          continue;
+        }
+
+        if (company.needsPostalCode) {
+          results.errors.push({ company: company.name, error: 'Code postal manquant' });
+          continue;
+        }
+
+        const companyData = {
+          name: company.name,
+          address: company.address,
+          postalCode: company.postalCode,
+          city: company.city,
+          phone: company.phone,
+          email: company.email,
+          contactName: company.contactName,
+          tags: company.tags,
+          status: company.status,
+          createdBy: currentUser.role
+        };
+
+        const addedCompany = await firebase.addCompany(companyData);
+
+        if (company.evaluation > 0) {
+          let commentText = `Évaluation initiale : ${company.evaluation}/5`;
+          if (company.students) {
+            commentText += `\nÉlève(s) placé(s) : ${company.students}`;
+          }
+
+          await firebase.addComment(addedCompany.id, {
+            comment: commentText,
+            rating: Math.round(company.evaluation),
+            authorName: currentUser.name,
+            authorRole: currentUser.role
+          });
+        }
+
+        results.success++;
+      } catch (error) {
+        console.error('Erreur import:', error);
+        results.errors.push({ company: company.name, error: error.message });
+      }
+
+      setImportProgress(Math.round(((i + 1) / companies.length) * 100));
+    }
+
+    setImportResult(results);
+    setStep(3);
+    setImporting(false);
+
+    if (onImport) {
+      await onImport();
+    }
+  };
+
+  const reset = () => {
+    setFile(null);
+    setCompanies([]);
+    setStep(1);
+    setImportProgress(0);
+    setImportResult(null);
+  };
+
+  if (!isOpen) return null;
+
+  const validCompanies = companies.filter(c => c.isValid && !c.needsPostalCode);
+  const invalidCompanies = companies.filter(c => !c.isValid || c.needsPostalCode);
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title="Importer depuis EcoleDirecte" size="lg">
+      {step === 1 && (
+        <div className="text-center py-8">
+          <div className="mb-6">
+            <FaFileImport size={64} className="mx-auto text-primary-400 mb-4" />
+            <h3 className="text-lg font-bold text-primary-900 mb-2">
+              Importer des entreprises depuis EcoleDirecte
+            </h3>
+            <p className="text-sm text-primary-600 mb-4">
+              Sélectionnez le fichier Excel exporté depuis EcoleDirecte
+            </p>
+          </div>
+
+          <label className="btn btn-primary cursor-pointer inline-flex items-center gap-2">
+            <FaFileExcel size={18} />
+            <span>Sélectionner le fichier Excel</span>
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+          </label>
+
+          {loading && (
+            <div className="mt-4 text-primary-600">
+              Analyse du fichier en cours...
+            </div>
+          )}
+
+          <div className="mt-8 p-4 bg-accent-50 border-2 border-accent-200 rounded-lg text-left">
+            <p className="font-semibold text-accent-800 mb-2">Format attendu :</p>
+            <p className="text-sm text-accent-700">
+              Colonnes : Nom, Adresse, Ville, Secteur d'Activité, Élèves, Niveaux, Téléphone, Email, Evaluation /5
+            </p>
+          </div>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div>
+          <div className="mb-4 p-4 bg-primary-50 border-2 border-primary-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-bold text-primary-900">
+                  {companies.length} entreprise(s) détectée(s)
+                </p>
+                <p className="text-sm text-primary-600">
+                  {validCompanies.length} prête(s) à importer
+                  {invalidCompanies.length > 0 && ` • ${invalidCompanies.length} nécessite(nt) correction`}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="max-h-96 overflow-y-auto space-y-3 mb-6">
+            {companies.map((company, index) => (
+              <div
+                key={company.id}
+                className={`p-4 rounded-lg border-2 ${
+                  company.isValid && !company.needsPostalCode
+                    ? 'bg-success-50 border-success-200'
+                    : 'bg-warning-50 border-warning-200'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-1">
+                    {company.isValid && !company.needsPostalCode ? (
+                      <FaCheckCircle className="text-success-600" size={20} />
+                    ) : (
+                      <FaExclamationCircle className="text-warning-600" size={20} />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-primary-900">{company.name}</p>
+                    <p className="text-sm text-primary-700">
+                      {company.address}
+                      {company.postalCode && `, ${company.postalCode}`} {company.city}
+                    </p>
+                    {company.needsPostalCode && (
+                      <div className="mt-2">
+                        <label className="text-xs text-primary-600 block mb-1">
+                          Code postal manquant :
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ex: 74000"
+                          value={company.postalCode}
+                          onChange={(e) => handlePostalCodeChange(index, e.target.value)}
+                          className="w-32 px-2 py-1 text-sm border-2 border-warning-300 rounded"
+                        />
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {company.tags.map(tag => {
+                        const tagDef = PREDEFINED_TAGS.find(t => t.name === tag);
+                        const tagColor = tagDef ? tagDef.color : 'bg-gray-100 text-gray-800';
+                        return (
+                          <span key={tag} className={`px-2 py-0.5 rounded text-xs font-semibold ${tagColor}`}>
+                            {tag}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    {company.evaluation > 0 && (
+                      <p className="text-xs text-primary-600 mt-1">
+                        Évaluation : {company.evaluation}/5
+                        {company.students && ` • Élève(s) : ${company.students}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              onClick={handleImport}
+              disabled={validCompanies.length === 0 || importing}
+              icon={FaFileImport}
+            >
+              {importing ? 'Import en cours...' : `Importer ${validCompanies.length} entreprise(s)`}
+            </Button>
+            <Button variant="secondary" onClick={reset}>
+              Annuler
+            </Button>
+          </div>
+
+          {importing && (
+            <div className="mt-4">
+              <div className="w-full bg-primary-200 rounded-full h-3 overflow-hidden">
+                <div
+                  className="bg-accent-600 h-full transition-all duration-300"
+                  style={{ width: `${importProgress}%` }}
+                />
+              </div>
+              <p className="text-sm text-primary-600 mt-2 text-center">
+                {importProgress}% - Import en cours...
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {step === 3 && importResult && (
+        <div className="text-center py-8">
+          <FaCheckCircle size={64} className="mx-auto text-success-600 mb-4" />
+          <h3 className="text-xl font-bold text-primary-900 mb-4">
+            Import terminé !
+          </h3>
+
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="p-4 bg-success-50 border-2 border-success-200 rounded-lg">
+              <p className="text-3xl font-bold text-success-700">{importResult.success}</p>
+              <p className="text-sm text-success-600">Entreprises ajoutées</p>
+            </div>
+            <div className="p-4 bg-danger-50 border-2 border-danger-200 rounded-lg">
+              <p className="text-3xl font-bold text-danger-700">{importResult.errors.length}</p>
+              <p className="text-sm text-danger-600">Erreurs</p>
+            </div>
+          </div>
+
+          {importResult.errors.length > 0 && (
+            <div className="text-left mb-6 p-4 bg-danger-50 border-2 border-danger-200 rounded-lg max-h-48 overflow-y-auto">
+              <p className="font-semibold text-danger-800 mb-2">Erreurs détectées :</p>
+              {importResult.errors.map((err, i) => (
+                <p key={i} className="text-sm text-danger-700">
+                  • {err.company} : {err.error}
+                </p>
+              ))}
+            </div>
+          )}
+
+          <Button onClick={() => { reset(); onClose(); }}>
+            Fermer
+          </Button>
+        </div>
+      )}
+    </Modal>
+  );
+};
 
 // =============================================================================
 // MENU D'EXPORT
@@ -1140,6 +1578,7 @@ export default function App() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [editingCompany, setEditingCompany] = useState(null);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -1262,6 +1701,16 @@ export default function App() {
               </div>
 
               <ExportMenu companies={companies} filteredCompanies={filteredCompanies} />
+              {canEdit && (
+                <Button
+                  variant="secondary"
+                  icon={FaFileImport}
+                  size="sm"
+                  onClick={() => setShowImportModal(true)}
+                >
+                  Importer
+                </Button>
+              )}
 
               <Button variant="ghost" icon={FaSignOutAlt} size="sm" onClick={() => setCurrentUser(null)}>
                 Déconnexion
@@ -1423,6 +1872,16 @@ export default function App() {
           }}
           onDelete={handleDeleteCompany}
           onRefresh={refreshCompanies}
+          currentUser={currentUser}
+        />
+      )}
+    </div>
+
+      {showImportModal && (
+        <ImportModal
+          isOpen={true}
+          onClose={() => setShowImportModal(false)}
+          onImport={refreshCompanies}
           currentUser={currentUser}
         />
       )}
