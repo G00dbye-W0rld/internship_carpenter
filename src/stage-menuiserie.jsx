@@ -55,7 +55,7 @@ import { auth, db } from './firebase';
 const GENERIC_ACCOUNTS = {
   'prof': {
     email: 'prof@stages.local',
-    password: 'prof123',
+    password: 'ecachav123',
     name: 'Professeur',
     role: 'teacher'
   },
