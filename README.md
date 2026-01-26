@@ -225,11 +225,8 @@ L'application se met à jour automatiquement via GitHub et Vercel :
 ## 🌟 Fonctionnalités Futures Possibles
 
 - [ ] Détection automatique des doublons à l'import
-- [ ] Mise à jour d'entreprises existantes via import
 - [ ] Import depuis CSV/Google Sheets
-- [ ] Notification par email des nouveaux avis
-- [ ] Statistiques avancées
-- [ ] Export PDF personnalisé avec logo
+
 
 ## 📊 Technologies Utilisées
 
