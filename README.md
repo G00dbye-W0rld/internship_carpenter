@@ -71,7 +71,7 @@ Colonnes attendues :
 
 **Identifiants :**
 - Professeur : `prof` / `[mot de passe confidentiel]`
-- Élève : `eleve` / `eleve123`
+- Élève : `eleve` / `[mot de passe confidentiel]`
 
 ## 🎨 Fonctionnalités Principales
 
