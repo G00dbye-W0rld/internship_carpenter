@@ -458,8 +458,22 @@ const parseEcoleDirectFile = async (file) => {
           const ville = row['Ville'] || '';
           const niveaux = row['Niveaux'] || row['Niveau(x)'] || '';
           
-          // Extraction du code postal
-          const postalCode = extractPostalCode(adresse);
+          // Extraction du code postal (depuis adresse OU ville)
+          let postalCode = extractPostalCode(adresse);
+          
+          // Si pas trouvé dans l'adresse, chercher dans la ville
+          if (!postalCode && ville) {
+            const villeMatch = ville.match(/^(\d{5})/); // Format: "74600 - ANNECY"
+            if (villeMatch) {
+              postalCode = villeMatch[1];
+            }
+          }
+          
+          // Extraire le nom de la ville (sans le code postal)
+          let villeClean = ville;
+          if (postalCode && ville.includes(postalCode)) {
+            villeClean = ville.replace(postalCode, '').replace(/^[\s\-]+/, '').trim();
+          }
           
           // Mapping des tags
           const sectorTags = mapSectorToTags(secteur);
@@ -473,7 +487,8 @@ const parseEcoleDirectFile = async (file) => {
               secteur,
               niveaux,
               tags: allTags,
-              codePostal: postalCode || '❌ MANQUANT'
+              codePostal: postalCode || '❌ MANQUANT',
+              ville: villeClean
             });
           }
           
@@ -482,7 +497,7 @@ const parseEcoleDirectFile = async (file) => {
             name: row['Nom'] || '',
             address: cleanAddress(adresse, postalCode),
             postalCode: postalCode,
-            city: ville,
+            city: villeClean, // Utiliser la ville nettoyée
             phone: row['Téléphone'] || '',
             email: row['Email'] || '',
             contactName: '',
@@ -492,7 +507,7 @@ const parseEcoleDirectFile = async (file) => {
             students: row['Élèves'] || row['Elèves'] || '',
             sector: secteur,
             levels: niveaux,
-            isValid: !!(row['Nom'] && ville),
+            isValid: !!(row['Nom'] && villeClean),
             needsPostalCode: !postalCode
           };
         });
