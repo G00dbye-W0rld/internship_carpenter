@@ -153,6 +153,7 @@ const GENERIC_ACCOUNTS = {
 // MAPPING SECTEURS D'ACTIVITÉ ECOLEDIRECT
 // =============================================================================
 const SECTOR_MAPPING = {
+  // Secteurs principaux
   'menuiserie': ['Menuiserie'],
   'pose': ['Pose'],
   'charpente': ['Charpente'],
@@ -169,7 +170,14 @@ const SECTOR_MAPPING = {
   'porte': ['Fenêtres/Portes'],
   'portes': ['Fenêtres/Portes'],
   'bois': ['Menuiserie'],
-  'construction bois': ['Charpente', 'Menuiserie']
+  'construction bois': ['Charpente', 'Menuiserie'],
+  
+  // 🆕 NOUVEAUX : Niveaux de formation depuis EcoleDirecte
+  'cap fabricant': ['CAP', 'Atelier'],
+  'cap installateur': ['CAP', 'Pose'],
+  'bac pro menuisier': ['Bac Pro', 'Menuiserie'],
+  'cap': ['CAP'],
+  'bac pro': ['Bac Pro']
 };
 
 // =============================================================================
@@ -356,11 +364,24 @@ const firebase = firebaseService;
 // UTILITAIRES IMPORT ECOLEDIRECT
 // =============================================================================
 
-// Extraire le code postal de l'adresse
+// Extraire le code postal de l'adresse avec patterns multiples
 const extractPostalCode = (address) => {
   if (!address) return '';
-  const match = address.match(/\b(\d{5})\b/);
-  return match ? match[1] : '';
+  
+  // Pattern 1: Code postal seul (ex: "12345")
+  let match = address.match(/\b(\d{5})\b/);
+  if (match) return match[1];
+  
+  // Pattern 2: Code postal avec ville (ex: "12345 - VILLE")
+  match = address.match(/(\d{5})\s*-/);
+  if (match) return match[1];
+  
+  // Pattern 3: Ville avec code postal (ex: "VILLE - 12345")
+  match = address.match(/-\s*(\d{5})/);
+  if (match) return match[1];
+  
+  console.warn(`⚠️ Code postal non trouvé dans l'adresse: "${address}"`);
+  return '';
 };
 
 // Nettoyer l'adresse (enlever le code postal si présent)
@@ -372,19 +393,28 @@ const cleanAddress = (address, postalCode) => {
   return address;
 };
 
-// Mapper secteur d'activité vers tags
+// Mapper secteur d'activité vers tags avec gestion robuste
 const mapSectorToTags = (sector) => {
   if (!sector) return [];
   
   const tags = new Set();
-  const sectorLower = sector.toLowerCase();
+  const sectorLower = sector.toLowerCase().trim();
   
-  Object.keys(SECTOR_MAPPING).forEach(key => {
-    if (sectorLower.includes(key)) {
-      SECTOR_MAPPING[key].forEach(tag => tags.add(tag));
-    }
-  });
+  // Recherche exacte d'abord
+  if (SECTOR_MAPPING[sectorLower]) {
+    SECTOR_MAPPING[sectorLower].forEach(tag => tags.add(tag));
+  }
   
+  // Recherche par mots-clés si pas de correspondance exacte
+  if (tags.size === 0) {
+    Object.keys(SECTOR_MAPPING).forEach(key => {
+      if (sectorLower.includes(key)) {
+        SECTOR_MAPPING[key].forEach(tag => tags.add(tag));
+      }
+    });
+  }
+  
+  // Tag par défaut si rien n'est trouvé
   return tags.size > 0 ? Array.from(tags) : ['Menuiserie'];
 };
 
@@ -404,7 +434,7 @@ const mapLevelsToTags = (levels) => {
   return tags;
 };
 
-// Parser le fichier Excel EcoleDirecte
+// Parser le fichier Excel EcoleDirecte avec gestion robuste et logs
 const parseEcoleDirectFile = async (file) => {
   const XLSX = await import('xlsx');
   
@@ -418,34 +448,68 @@ const parseEcoleDirectFile = async (file) => {
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(firstSheet);
         
+        console.log(`📊 Import: ${jsonData.length} lignes trouvées`);
+        console.log('📋 Colonnes disponibles:', Object.keys(jsonData[0] || {}));
+        
         const companies = jsonData.map((row, index) => {
-          const postalCode = extractPostalCode(row['Adresse']);
-          const sectorTags = mapSectorToTags(row["Secteur d'Activité"]);
-          const levelTags = mapLevelsToTags(row['Niveaux']);
+          // Gérer les variations de noms de colonnes
+          const secteur = row["Secteur d'Activité"] || row["Secteur Activité"] || row["Secteur"] || '';
+          const adresse = row['Adresse'] || '';
+          const ville = row['Ville'] || '';
+          const niveaux = row['Niveaux'] || row['Niveau(x)'] || '';
+          
+          // Extraction du code postal
+          const postalCode = extractPostalCode(adresse);
+          
+          // Mapping des tags
+          const sectorTags = mapSectorToTags(secteur);
+          const levelTags = mapLevelsToTags(niveaux);
           const allTags = [...new Set([...sectorTags, ...levelTags])];
+          
+          // Log de debug pour les premières lignes
+          if (index < 3) {
+            console.log(`\n🔍 Ligne ${index + 1}:`, {
+              nom: row['Nom'],
+              secteur,
+              niveaux,
+              tags: allTags,
+              codePostal: postalCode || '❌ MANQUANT'
+            });
+          }
           
           return {
             id: `import-${index}`,
             name: row['Nom'] || '',
-            address: cleanAddress(row['Adresse'], postalCode),
+            address: cleanAddress(adresse, postalCode),
             postalCode: postalCode,
-            city: row['Ville'] || '',
+            city: ville,
             phone: row['Téléphone'] || '',
             email: row['Email'] || '',
             contactName: '',
-            tags: allTags,
+            tags: allTags.length > 0 ? allTags : ['Menuiserie'], // Tag par défaut
             status: 'active',
-            evaluation: parseFloat(row['Evaluation /5']) || 0,
+            evaluation: parseFloat(row['Evaluation /5'] || row['Évaluations / 5']) || 0,
             students: row['Élèves'] || row['Elèves'] || '',
-            sector: row["Secteur d'Activité"] || '',
-            levels: row['Niveaux'] || '',
-            isValid: !!(row['Nom'] && row['Ville']),
+            sector: secteur,
+            levels: niveaux,
+            isValid: !!(row['Nom'] && ville),
             needsPostalCode: !postalCode
           };
         });
         
+        // Statistiques finales
+        const validCount = companies.filter(c => c.isValid && !c.needsPostalCode).length;
+        const missingPostal = companies.filter(c => c.needsPostalCode).length;
+        const invalid = companies.filter(c => !c.isValid).length;
+        
+        console.log('\n✅ Résultats du parsing:');
+        console.log(`  • ${validCount} entreprises valides`);
+        console.log(`  • ${missingPostal} codes postaux manquants`);
+        console.log(`  • ${invalid} lignes invalides (nom ou ville manquant)`);
+        
         resolve(companies);
       } catch (error) {
+        console.error('❌ Erreur parsing Excel:', error);
         reject(error);
       }
     };
